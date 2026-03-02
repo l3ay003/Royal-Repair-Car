@@ -1,57 +1,109 @@
-// รหัส Google Apps Script (Code.gs)
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบแจ้งซ่อมรถยนต์</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        :root { --gov-green: #2d5a27; --light-green: #e8f5e9; }
+        body { background-color: #f4f7f6; }
+        .sidebar { width: 250px; height: 100vh; background: var(--gov-green); color: white; position: fixed; }
+        .content { margin-left: 250px; padding: 20px; }
+        .nav-link { color: rgba(255,255,255,0.8); transition: 0.3s; }
+        .nav-link:hover, .nav-link.active { color: white; background: rgba(255,255,255,0.1); }
+        .btn-gov { background-color: var(--gov-green); color: white; }
+        @media (max-width: 768px) {
+            .sidebar { width: 70px; }
+            .content { margin-left: 70px; }
+            .nav-text { display: none; }
+        }
+    </style>
+</head>
+<body>
 
-const SHEET_ID = "YOUR_SHEET_ID";
-const LINE_ACCESS_TOKEN = "YOUR_LINE_CHANNEL_ACCESS_TOKEN";
+<div class="sidebar d-flex flex-column p-3">
+    <h4 class="text-center mb-4"><span class="nav-text">Car Repair</span></h4>
+    <ul class="nav nav-pills flex-column mb-auto">
+        <li class="nav-item">
+            <a href="#" class="nav-link active" onclick="showPage('dashboard')">
+                <i class="material-icons me-2">dashboard</i> <span class="nav-text">แดชบอร์ด</span>
+            </a>
+        </li>
+        <li>
+            <a href="#" class="nav-link" onclick="openRepairModal()">
+                <i class="material-icons me-2">add_circle</i> <span class="nav-text">แจ้งซ่อม</span>
+            </a>
+        </li>
+        <li id="admin-menu" style="display:none;">
+            <hr>
+            <a href="#" class="nav-link" onclick="showPage('admin-user')">
+                <i class="material-icons me-2">people</i> <span class="nav-text">จัดการ User</span>
+            </a>
+        </li>
+    </ul>
+    <div class="user-profile p-2 border-top">
+        <img id="userImg" src="" class="rounded-circle me-2" width="32">
+        <span id="userName" class="nav-text">Loading...</span>
+    </div>
+</div>
 
-function doPost(e) {
-  const data = JSON.parse(e.postData.contents);
-  const action = data.action;
+<div class="content">
+    <div id="page-content">
+        </div>
+</div>
 
-  if (action === "submitRepair") {
-    return saveRepairData(data);
-  } else if (action === "updateStatus") {
-    return updateRepairStatus(data);
-  }
-}
+<div class="modal fade" id="repairModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form id="repairForm" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">แจ้งซ่อมรถยนต์</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+            <label>ทะเบียนรถ</label>
+            <select class="form-select" id="carSelect" required></select>
+        </div>
+        <div class="mb-3">
+            <label>เลขไมล์</label>
+            <input type="number" class="form-control" id="mileage" required>
+        </div>
+        <div class="mb-3">
+            <label>รายละเอียดอาการ</label>
+            <textarea class="form-control" id="symptoms" rows="3" required></textarea>
+        </div>
+        <div class="mb-3">
+            <label>ประเมินค่าใช้จ่าย (บาท)</label>
+            <input type="number" class="form-control" id="estCost" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-gov">ส่งแจ้งซ่อมรถยนต์</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-function saveRepairData(data) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  const sheet = ss.getSheetByName("Repairs");
-  const caseId = "REQ-" + new Date().getTime();
-  
-  sheet.appendRow([
-    caseId, 
-    new Date(), 
-    data.userId, 
-    data.realName, 
-    data.licensePlate, 
-    data.mileage, 
-    data.symptoms, 
-    data.estimatedCost, 
-    data.location, 
-    data.photoUrl, 
-    "รอดำเนินการ"
-  ]);
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script>
+    // LIFF Initialization & Logic
+    async function main() {
+        await liff.init({ liffId: "YOUR_LIFF_ID" });
+        if (liff.isLoggedIn()) {
+            const profile = await liff.getProfile();
+            document.getElementById('userImg').src = profile.pictureUrl;
+            checkUserRole(profile.userId);
+        } else {
+            liff.login();
+        }
+    }
+    main();
 
-  sendLineToAdmin(data); // ส่งแจ้งเตือนหา Admin
-  return ContentService.createTextOutput(JSON.stringify({status: "success", caseId: caseId})).setMimeType(ContentService.MimeType.JSON);
-}
-
-function sendLineToAdmin(data) {
-  const message = {
-    "to": "ADMIN_USER_ID_OR_GROUP", 
-    "messages": [{
-      "type": "text",
-      "text": `🚗 มีการแจ้งซ่อมรถยนต์ใหม่!\n👤 ผู้แจ้ง: ${data.realName}\n🔢 ทะเบียน: ${data.licensePlate}\n🛣️ เลขไมล์: ${data.mileage}\n🔧 อาการ: ${data.symptoms}\n💰 ประเมิน: ${data.estimatedCost} บาท\n📍 สถานที่: ${data.location}`
-    }]
-  };
-  
-  UrlFetchApp.fetch("https://api.line.me/v2/bot/message/push", {
-    "method": "post",
-    "headers": {
-      "Authorization": "Bearer " + LINE_ACCESS_TOKEN,
-      "Content-Type": "application/json"
-    },
-    "payload": JSON.stringify(message)
-  });
-}
+    function showPage(page) {
+        // Logic สำหรับ fetch ข้อมูลจาก Google Sheets มาแสดงในหน้า Dashboard
+    }
+</script>
+</body>
+</html>
