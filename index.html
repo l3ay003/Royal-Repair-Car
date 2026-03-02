@@ -85,7 +85,7 @@
     const API_URL = "https://script.google.com/macros/s/AKfycbzltzdAh6mzriXuV-7XryZCbM1SidzfIMv3VPv-gYLjHy5lY5Bj4lYozOiLwZ0srYNeHw/exec";
     let currentUser = { userId: "", name: "", role: "" };
 
-    async function initLIFF() {
+   /* async function initLIFF() {
         await liff.init({ liffId: "2009201666-JexzIIEn" });
         if (!liff.isLoggedIn()) { liff.login(); return; }
         const profile = await liff.getProfile();
@@ -105,7 +105,87 @@
         
         loadDashboard();
         loadCarList();
+    } */
+
+
+    async function initLIFF() {
+    await liff.init({ liffId: "2009201666-JexzIIEn" });
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    const profile = await liff.getProfile();
+    
+    // ส่งข้อมูลไปตรวจสอบ/ลงทะเบียนอัตโนมัติ
+    const res = await fetch(API_URL, { 
+        method: "POST", 
+        body: JSON.stringify({ 
+            action: "checkAndRegisterUser", 
+            userId: profile.userId,
+            displayName: profile.displayName 
+        }) 
+    });
+    const data = await res.json();
+    
+    currentUser = data; // เก็บข้อมูล User ปัจจุบัน
+    document.getElementById('u-img').src = profile.pictureUrl;
+    document.getElementById('u-name').innerText = data.name;
+    document.getElementById('u-role').innerText = data.role;
+
+    if (data.role === "Admin") {
+        document.getElementById('admin-tools').style.display = "block";
     }
+    loadDashboard();
+    loadCarList();    
+        
+}
+
+    // ฟังก์ชันดึงรายชื่อ User มาแสดง (สำหรับ Admin)
+async function loadUsers() {
+    const mainView = document.getElementById('main-view');
+    mainView.innerHTML = `<div class="text-center"><h4>กำลังโหลดรายชื่อผู้ใช้...</h4></div>`;
+    
+    const res = await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "getAllUsers" }) });
+    const users = await res.json();
+    
+    let html = `
+        <h4 class="mb-4">จัดการบัญชีผู้ใช้งาน</h4>
+        <div class="card card-stat"><div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>ชื่อ LINE</th><th>ชื่อจริง</th><th>สิทธิ์</th><th>จัดการ</th></tr></thead>
+            <tbody>`;
+    
+    users.forEach(u => {
+        html += `
+            <tr>
+                <td>${u[1]}</td>
+                <td>${u[2]}</td>
+                <td><span class="badge ${u[3] === 'Admin' ? 'bg-danger' : 'bg-primary'}">${u[3]}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-success" onclick="editUser('${u[0]}', '${u[2]}', '${u[3]}')">แก้ไข</button>
+                </td>
+            </tr>`;
+    });
+    
+    html += `</tbody></table></div></div>`;
+    mainView.innerHTML = html;
+}
+
+// ฟังก์ชันแก้ไข User
+async function editUser(id, name, role) {
+    const newName = prompt("แก้ไขชื่อจริง:", name);
+    const newRole = confirm("ต้องการให้เป็น Admin ใช่หรือไม่? (ตกลง=Admin / ยกเลิก=User)") ? "Admin" : "User";
+    
+    if (newName) {
+        const res = await fetch(API_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ 
+                action: "updateUser", 
+                targetUserId: id, 
+                realName: newName, 
+                role: newRole 
+            }) 
+        });
+        if (res.ok) { alert("อัปเดตเรียบร้อย"); loadUsers(); }
+    }
+}
 
     async function loadCarList() {
         const res = await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "getCarList" }) });
@@ -161,3 +241,4 @@
 </script>
 </body>
 </html>
+
