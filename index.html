@@ -194,30 +194,86 @@ async function editUser(id, name, role) {
         cars.forEach(c => select.innerHTML += `<option value="${c}">${c}</option>`);
     }
 
-    async function loadDashboard() {
-        const res = await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "getRepairs", userId: currentUser.userId, role: currentUser.role }) });
-        const items = await res.json();
-        const tbody = document.getElementById('repair-table');
-        tbody.innerHTML = "";
-        items.reverse().forEach(row => {
-            tbody.innerHTML += `
-                <tr>
-                    <td>${new Date(row[1]).toLocaleDateString()}</td>
-                    <td>${row[4]}</td>
-                    <td>${row[6]}</td>
-                    <td><span class="badge bg-secondary">${row[10]}</span></td>
-                    <td><button class="btn btn-sm btn-outline-primary" onclick="viewDetail('${row[0]}')">ดู</button></td>
-                </tr>`;
-        });
-    }
+// --- ส่วนการจัดการเมนู (แก้ปัญหากดกลับหน้า Dashboard ไม่ได้) ---
+async function loadDashboard() {
+    // ล้างหน้าจอหลักก่อนโหลด
+    const mainView = document.getElementById('main-view');
+    mainView.innerHTML = `
+        <div class="row g-3 mb-4" id="stat-cards"></div>
+        <div class="card card-stat">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr><th>วันที่</th><th>ทะเบียน</th><th>อาการ</th><th>สถานะ</th><th>จัดการ</th></tr>
+                        </thead>
+                        <tbody id="repair-table"><tr><td colspan="5" class="text-center">กำลังโหลดข้อมูล...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>`;
 
-    document.getElementById('repairForm').onsubmit = async (e) => {
-        e.preventDefault();
+    try {
+        const res = await fetch(API_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ action: "getRepairs", userId: currentUser.userId, role: currentUser.role }) 
+        });
+        const items = await res.json();
+        renderTable(items); // แยกฟังก์ชัน render ออกมา
+        renderStats(items); // แสดง Card สรุปสถิติ
+    } catch (err) {
+        console.error("Dashboard Error:", err);
+    }
+}
+
+function renderTable(items) {
+    const tbody = document.getElementById('repair-table');
+    tbody.innerHTML = "";
+    if (items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center">ไม่พบข้อมูลการแจ้งซ่อม</td></tr>`;
+        return;
+    }
+    items.reverse().forEach(row => {
+        let badgeClass = "bg-secondary";
+        if (row[10] === "เสร็จสิ้น") badgeClass = "bg-success";
+        if (row[10] === "กำลังซ่อม") badgeClass = "bg-warning text-dark";
+        if (row[10] === "ไม่อนุมัติ") badgeClass = "bg-danger";
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${new Date(row[1]).toLocaleDateString('th-TH')}</td>
+                <td><b>${row[4]}</b></td>
+                <td>${row[6]}</td>
+                <td><span class="badge ${badgeClass}">${row[10]}</span></td>
+                <td><button class="btn btn-sm btn-outline-primary" onclick="viewDetail('${row[0]}')">ดู</button></td>
+            </tr>`;
+    });
+}
+
+// --- ส่วนบันทึกแจ้งซ่อม (แก้ปัญหารูปภาพไม่บันทึก) ---
+document.getElementById('repairForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const btnSubmit = e.target.querySelector('button[type="submit"]');
+    btnSubmit.disabled = true;
+    btnSubmit.innerText = "กำลังบันทึก...";
+
+    try {
         const file = document.getElementById('photo').files[0];
-        let base64 = null;
+        let base64 = "";
+        
         if (file) {
-            const reader = new FileReader();
-            base64 = await new Promise(r => { reader.onload = () => r(reader.result); reader.readAsDataURL(file); });
+            // ตรวจสอบขนาดไฟล์ (ไม่ควรเกิน 2MB เพื่อความเสถียรของ GAS)
+            if (file.size > 2 * 1024 * 1024) {
+                alert("ไฟล์รูปภาพใหญ่เกินไป (จำกัด 2MB)");
+                btnSubmit.disabled = false;
+                btnSubmit.innerText = "ส่งข้อมูล";
+                return;
+            }
+            base64 = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.readAsDataURL(file);
+            });
         }
 
         const payload = {
@@ -229,16 +285,29 @@ async function editUser(id, name, role) {
             symptoms: document.getElementById('symptoms').value,
             estCost: document.getElementById('est-cost').value,
             location: document.getElementById('loc').value,
-            image: base64
+            image: base64 // ส่ง string base64 เปล่าถ้าไม่มีรูป
         };
 
         const res = await fetch(API_URL, { method: "POST", body: JSON.stringify(payload) });
-        if (res.ok) { alert("ส่งข้อมูลสำเร็จ"); location.reload(); }
-    };
+        const result = await res.json();
 
+        if (result.status === "success") {
+            alert("บันทึกข้อมูลสำเร็จ!");
+            location.reload(); 
+        } else {
+            throw new Error(result.message);
+        }
+    } catch (err) {
+        alert("เกิดข้อผิดพลาด: " + err.message);
+        btnSubmit.disabled = false;
+        btnSubmit.innerText = "ส่งข้อมูล";
+    }
+};
+    
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('show'); }
     initLIFF();
 </script>
 </body>
 </html>
+
 
