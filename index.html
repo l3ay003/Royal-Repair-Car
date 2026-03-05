@@ -396,9 +396,9 @@
       <button class="btn-sm-icon" style="background:rgba(255,255,255,.15);color:#fff;" id="sidebar-toggle">
         <span class="material-icons">menu</span>
       </button>
-      <img id="nav-logo" src="royal-d.png"
+      <img id="nav-logo" src="logo.png"
            onerror="this.style.display='none';document.getElementById('nav-logo-fallback').style.display='inline';"
-           style="height:120px;width:120px;object-fit:contain;border-radius:8px;padding:0;">
+           style="height:48px;width:48px;object-fit:contain;border-radius:8px;padding:0;">
       <span class="material-icons" id="nav-logo-fallback" style="color:#fff;font-size:1.4rem;display:none;">directions_car</span>
       <span class="brand-text">ระบบแจ้งซ่อมรถยนต์</span>
     </div>
@@ -956,8 +956,8 @@
    CONFIG — แก้ค่าเหล่านี้ให้ตรงกับของคุณ
    ============================================================ */
 const CONFIG = {
-  LIFF_ID: '2009307051-5UV6LT8a',                          // LIFF ID จาก LINE Developers
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbxXMkVqqmTvvCeYTq58wYb7Vl8QrVKoUXgiqEqv3FgvoTfrH6tA3UCxLznWpFBO5U_7Aw/exec',   // URL จาก Deploy > Web App ใน GAS
+  LIFF_ID: 'YOUR_LIFF_ID',                          // LIFF ID จาก LINE Developers
+  GAS_URL: 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL',   // URL จาก Deploy > Web App ใน GAS
 };
 
 /* ============================================================
@@ -2140,15 +2140,20 @@ let chartDaily  = null;
 function initReportSelectors() {
   const yearSel  = document.getElementById('report-year');
   const monthSel = document.getElementById('report-month');
-  if (!yearSel || yearSel.options.length > 0) return;
+  if (!yearSel) return;
+
+  // clear แล้ว rebuild ทุกครั้ง เพื่อให้แน่ใจว่ามีค่า
+  yearSel.innerHTML = '';
+  monthSel.innerHTML = '';
 
   const now = new Date();
-  // ปีย้อนหลัง 3 ปี
   for (let y = now.getFullYear(); y >= now.getFullYear()-2; y--) {
     const o = document.createElement('option');
     o.value = y; o.text = 'ปี ' + (y + 543);
     yearSel.appendChild(o);
   }
+  yearSel.value = now.getFullYear(); // ตั้ง default ปีปัจจุบัน
+
   const months = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
                   'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
   months.forEach((m, i) => {
@@ -2156,12 +2161,18 @@ function initReportSelectors() {
     o.value = i+1; o.text = m;
     monthSel.appendChild(o);
   });
-  monthSel.value = now.getMonth() + 1;
+  monthSel.value = now.getMonth() + 1; // ตั้ง default เดือนปัจจุบัน
 }
 
 function generateReport() {
-  const year  = parseInt(document.getElementById('report-year').value);
-  const month = parseInt(document.getElementById('report-month').value);
+  // ถ้า selector ยังไม่มีค่าให้ init ก่อน
+  const yearEl  = document.getElementById('report-year');
+  const monthEl = document.getElementById('report-month');
+  if (!yearEl.value || !monthEl.value) { initReportSelectors(); }
+
+  const year  = parseInt(yearEl.value);
+  const month = parseInt(monthEl.value);
+  if (isNaN(year) || isNaN(month)) { showToast('กรุณาเลือกปีและเดือน','error'); return; }
   const monthName = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
                      'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'][month];
 
