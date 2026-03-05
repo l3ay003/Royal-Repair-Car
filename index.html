@@ -122,6 +122,18 @@
   /* ซ่อน scrollbar แต่ scroll ได้ */
   #stat-cards > div::-webkit-scrollbar { display:none; }
 
+  /* Report page */
+  .report-summary-card {
+    background:#fff; border-radius:var(--radius); padding:1rem 1.25rem;
+    border:1px solid var(--gray-200); box-shadow:var(--shadow-sm);
+    flex:1; min-width:130px; text-align:center;
+  }
+  .report-summary-card .rs-val { font-size:1.8rem; font-weight:700; font-family:'Prompt',sans-serif; line-height:1; }
+  .report-summary-card .rs-lbl { font-size:.78rem; color:var(--gray-500); margin-top:.25rem; }
+  .report-bar-wrap { display:flex; align-items:center; gap:.6rem; margin-bottom:.4rem; font-size:.82rem; }
+  .report-bar { height:10px; border-radius:20px; background:var(--primary); transition:.4s; min-width:4px; }
+  @media (max-width:640px) { .report-grid { grid-template-columns:1fr !important; } }
+
   /* ======= TABLE ======= */
   .data-table-wrapper { background:#fff; border-radius:var(--radius); box-shadow:var(--shadow-sm); border:1px solid var(--gray-200); overflow:hidden; }
   .data-table-header { padding:1rem 1.25rem; border-bottom:1px solid var(--gray-200); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem; }
@@ -384,9 +396,9 @@
       <button class="btn-sm-icon" style="background:rgba(255,255,255,.15);color:#fff;" id="sidebar-toggle">
         <span class="material-icons">menu</span>
       </button>
-      <img id="nav-logo" src="royal-d.png"
+      <img id="nav-logo" src="logo.png"
            onerror="this.style.display='none';document.getElementById('nav-logo-fallback').style.display='inline';"
-           style="height:100px;width:100px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,.15);padding:3px;">
+           style="height:48px;width:48px;object-fit:contain;border-radius:8px;padding:0;">
       <span class="material-icons" id="nav-logo-fallback" style="color:#fff;font-size:1.4rem;display:none;">directions_car</span>
       <span class="brand-text">ระบบแจ้งซ่อมรถยนต์</span>
     </div>
@@ -417,6 +429,9 @@
         </a>
         <a class="sidebar-item" data-page="admin-vehicles" onclick="navigate('admin-vehicles')">
           <span class="material-icons">directions_car</span> จัดการทะเบียนรถ
+        </a>
+        <a class="sidebar-item" data-page="admin-report" onclick="navigate('admin-report')">
+          <span class="material-icons">bar_chart</span> รายงานรายเดือน
         </a>
       </div>
       <div class="sidebar-section-label" style="margin-top:.5rem;">อื่นๆ</div>
@@ -568,6 +583,85 @@
         <!-- Mobile Cards -->
         <div class="d-md-none" id="repair-cards-mobile">
           <div class="empty-state"><span class="material-icons">inbox</span>กำลังโหลด...</div>
+        </div>
+      </div>
+
+      <!-- ===== ADMIN MONTHLY REPORT PAGE ===== -->
+      <div class="page-section" id="page-admin-report">
+        <div class="page-title">
+          <span class="material-icons">bar_chart</span> รายงานสรุปรายเดือน
+          <div class="ms-auto d-flex gap-2 align-items-center">
+            <select id="report-year"  class="form-select form-select-sm" style="width:100px;font-size:.85rem;"></select>
+            <select id="report-month" class="form-select form-select-sm" style="width:130px;font-size:.85rem;"></select>
+            <button class="btn-repair-header" onclick="generateReport()" style="padding:.45rem 1rem;">
+              <span class="material-icons" style="font-size:1rem;">refresh</span> สร้างรายงาน
+            </button>
+            <button class="btn-outline-custom btn-sm" onclick="printMonthlyReport()">
+              <span class="material-icons" style="font-size:.9rem;">picture_as_pdf</span> PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div id="report-summary-row" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem;"></div>
+
+        <!-- Charts row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;" class="report-grid">
+
+          <!-- Status Pie -->
+          <div class="data-table-wrapper" style="padding:1rem;">
+            <div style="font-weight:700;font-size:.9rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem;">
+              <span class="material-icons" style="font-size:1rem;color:var(--primary);">donut_large</span> สัดส่วนสถานะ
+            </div>
+            <canvas id="chart-status" height="200"></canvas>
+          </div>
+
+          <!-- Daily Bar -->
+          <div class="data-table-wrapper" style="padding:1rem;">
+            <div style="font-weight:700;font-size:.9rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem;">
+              <span class="material-icons" style="font-size:1rem;color:var(--primary);">bar_chart</span> แจ้งซ่อมรายวัน
+            </div>
+            <canvas id="chart-daily" height="200"></canvas>
+          </div>
+        </div>
+
+        <!-- Top users + Cost summary -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;" class="report-grid">
+
+          <!-- Top Users -->
+          <div class="data-table-wrapper" style="padding:1rem;">
+            <div style="font-weight:700;font-size:.9rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem;">
+              <span class="material-icons" style="font-size:1rem;color:var(--primary);">leaderboard</span> ผู้แจ้งซ่อมสูงสุด
+            </div>
+            <div id="report-top-users"></div>
+          </div>
+
+          <!-- Cost summary -->
+          <div class="data-table-wrapper" style="padding:1rem;">
+            <div style="font-weight:700;font-size:.9rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem;">
+              <span class="material-icons" style="font-size:1rem;color:var(--primary);">payments</span> สรุปค่าใช้จ่าย
+            </div>
+            <div id="report-cost-summary"></div>
+          </div>
+        </div>
+
+        <!-- Detail Table -->
+        <div class="data-table-wrapper">
+          <div class="data-table-header">
+            <h6><span class="material-icons" style="font-size:1rem;color:var(--primary);vertical-align:middle;">table_chart</span> รายการทั้งหมดในเดือนนี้</h6>
+            <span id="report-job-count" style="font-size:.82rem;color:var(--gray-500);"></span>
+          </div>
+          <div class="table-responsive">
+            <table class="table" style="font-size:.85rem;">
+              <thead>
+                <tr>
+                  <th>เลขที่งาน</th><th>วันที่แจ้ง</th><th>ผู้แจ้ง</th>
+                  <th>ทะเบียน</th><th>สถานะ</th><th>ค่าใช้จ่าย</th>
+                </tr>
+              </thead>
+              <tbody id="report-tbody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -854,16 +948,16 @@
      SCRIPTS
 ====================================================== -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
 <script>
 /* ============================================================
    CONFIG — แก้ค่าเหล่านี้ให้ตรงกับของคุณ
    ============================================================ */
-
 const CONFIG = {
-  LIFF_ID: '2009307051-5UV6LT8a', // LIFF ID จาก LINE Developers
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbxXMkVqqmTvvCeYTq58wYb7Vl8QrVKoUXgiqEqv3FgvoTfrH6tA3UCxLznWpFBO5U_7Aw/exec',   // URL จาก Deploy > Web App ใน GAS
+  LIFF_ID: 'YOUR_LIFF_ID',                          // LIFF ID จาก LINE Developers
+  GAS_URL: 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL',   // URL จาก Deploy > Web App ใน GAS
 };
 
 /* ============================================================
@@ -2013,7 +2107,7 @@ function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / เจ้านาย</div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>
@@ -2033,6 +2127,267 @@ function printJobPDF(jobId) {
 
   const win = window.open('', '_blank');
   if (!win) { showToast('กรุณาอนุญาต Popup เพื่อพิมพ์ PDF', 'error'); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
+/* ============================================================
+   MONTHLY REPORT — Admin only
+   ============================================================ */
+let chartStatus = null;
+let chartDaily  = null;
+
+function initReportSelectors() {
+  const yearSel  = document.getElementById('report-year');
+  const monthSel = document.getElementById('report-month');
+  if (!yearSel || yearSel.options.length > 0) return;
+
+  const now = new Date();
+  // ปีย้อนหลัง 3 ปี
+  for (let y = now.getFullYear(); y >= now.getFullYear()-2; y--) {
+    const o = document.createElement('option');
+    o.value = y; o.text = 'ปี ' + (y + 543);
+    yearSel.appendChild(o);
+  }
+  const months = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                  'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  months.forEach((m, i) => {
+    const o = document.createElement('option');
+    o.value = i+1; o.text = m;
+    monthSel.appendChild(o);
+  });
+  monthSel.value = now.getMonth() + 1;
+}
+
+function generateReport() {
+  const year  = parseInt(document.getElementById('report-year').value);
+  const month = parseInt(document.getElementById('report-month').value);
+  const monthName = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                     'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'][month];
+
+  // กรองเฉพาะเดือนที่เลือก
+  const jobs = allJobs.filter(j => {
+    if (!j.createdAt) return false;
+    const d = new Date(j.createdAt);
+    return d.getFullYear() === year && d.getMonth()+1 === month;
+  });
+
+  // ===== Summary Cards =====
+  const statuses = ['รอดำเนินการ','อนุมัติ','กำลังซ่อม','เสร็จสิ้น','ส่งกลับแก้ไข','ไม่อนุมัติ'];
+  const colors   = ['#F57F17','#2E7D32','#1565C0','#1B5E20','#6A1B9A','#C62828'];
+  const totalCost = jobs.reduce((s,j) => s + (parseFloat(j.actualCost)||0), 0);
+
+  const summaryCards = [
+    { val: jobs.length,                 lbl: 'งานทั้งหมด',     icon: 'list_alt',      c: '#283593', bg: '#E8EAF6' },
+    { val: jobs.filter(j=>j.status==='เสร็จสิ้น').length, lbl: 'เสร็จสิ้น', icon: 'check_circle', c: '#1B5E20', bg: '#E8F5E9' },
+    { val: jobs.filter(j=>j.status==='รอดำเนินการ').length, lbl: 'รอดำเนินการ', icon: 'pending', c: '#E65100', bg: '#FFF3E0' },
+    { val: totalCost > 0 ? totalCost.toLocaleString()+' ฿' : '-', lbl: 'ค่าใช้จ่ายรวม', icon: 'payments', c: '#2E7D32', bg: '#E8F5E9' },
+  ];
+
+  document.getElementById('report-summary-row').innerHTML = summaryCards.map(s => `
+    <div class="report-summary-card">
+      <div style="width:40px;height:40px;background:${s.bg};border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .5rem;">
+        <span class="material-icons" style="color:${s.c};font-size:1.3rem;">${s.icon}</span>
+      </div>
+      <div class="rs-val" style="color:${s.c};">${s.val}</div>
+      <div class="rs-lbl">${s.lbl}</div>
+    </div>`).join('');
+
+  // ===== Chart 1: Status Pie =====
+  const statusCounts = statuses.map(s => jobs.filter(j => j.status===s).length);
+  if (chartStatus) chartStatus.destroy();
+  chartStatus = new Chart(document.getElementById('chart-status'), {
+    type: 'doughnut',
+    data: {
+      labels: statuses,
+      datasets: [{ data: statusCounts, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: {
+      plugins: {
+        legend: { position:'right', labels:{ font:{size:11}, boxWidth:14, padding:8 } }
+      },
+      cutout: '60%',
+      responsive: true,
+      maintainAspectRatio: true,
+    }
+  });
+
+  // ===== Chart 2: Daily Bar =====
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const dailyLabels = Array.from({length:daysInMonth},(_,i)=>i+1);
+  const dailyCounts = dailyLabels.map(d =>
+    jobs.filter(j => { const dt=new Date(j.createdAt); return dt.getDate()===d; }).length
+  );
+  if (chartDaily) chartDaily.destroy();
+  chartDaily = new Chart(document.getElementById('chart-daily'), {
+    type: 'bar',
+    data: {
+      labels: dailyLabels,
+      datasets: [{
+        label: 'จำนวนงาน',
+        data: dailyCounts,
+        backgroundColor: 'rgba(46,125,50,.7)',
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      plugins: { legend:{ display:false } },
+      scales: {
+        x: { grid:{display:false}, ticks:{font:{size:10}} },
+        y: { beginAtZero:true, ticks:{ stepSize:1, font:{size:10} }, grid:{ color:'#f0f0f0' } }
+      },
+      responsive: true,
+      maintainAspectRatio: true,
+    }
+  });
+
+  // ===== Top Users =====
+  const userMap = {};
+  jobs.forEach(j => {
+    const n = j.userName || 'ไม่ระบุ';
+    userMap[n] = (userMap[n]||0)+1;
+  });
+  const topUsers = Object.entries(userMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxU = topUsers[0]?.[1] || 1;
+  document.getElementById('report-top-users').innerHTML = topUsers.length
+    ? topUsers.map(([name,cnt],i) => `
+        <div class="report-bar-wrap">
+          <div style="width:18px;font-weight:700;color:var(--gray-500);text-align:right;">${i+1}.</div>
+          <div style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+          <div style="width:80px;">
+            <div class="report-bar" style="width:${Math.round(cnt/maxU*100)}%;background:${i===0?'var(--primary)':'var(--gray-300)'};"></div>
+          </div>
+          <div style="width:24px;text-align:right;font-weight:700;color:var(--primary);">${cnt}</div>
+        </div>`).join('')
+    : '<div style="color:var(--gray-400);text-align:center;padding:1rem;">ไม่มีข้อมูล</div>';
+
+  // ===== Cost Summary =====
+  const costJobs    = jobs.filter(j=>parseFloat(j.actualCost)>0);
+  const maxCost     = Math.max(...costJobs.map(j=>parseFloat(j.actualCost)||0), 1);
+  const avgCost     = costJobs.length ? totalCost/costJobs.length : 0;
+  document.getElementById('report-cost-summary').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.75rem;">
+      <div style="background:var(--primary-xlight);border-radius:8px;padding:.6rem .8rem;text-align:center;">
+        <div style="font-size:1.2rem;font-weight:700;color:var(--primary);font-family:'Prompt',sans-serif;">${totalCost.toLocaleString()}</div>
+        <div style="font-size:.75rem;color:var(--gray-500);">รวมทั้งหมด (บาท)</div>
+      </div>
+      <div style="background:#E3F2FD;border-radius:8px;padding:.6rem .8rem;text-align:center;">
+        <div style="font-size:1.2rem;font-weight:700;color:#1565C0;font-family:'Prompt',sans-serif;">${Math.round(avgCost).toLocaleString()}</div>
+        <div style="font-size:.75rem;color:var(--gray-500);">เฉลี่ยต่องาน (บาท)</div>
+      </div>
+    </div>
+    ${costJobs.sort((a,b)=>parseFloat(b.actualCost)-parseFloat(a.actualCost)).slice(0,5).map(j=>`
+      <div class="report-bar-wrap">
+        <div style="flex:1;min-width:0;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${j.jobId}</div>
+        <div style="width:80px;">
+          <div class="report-bar" style="width:${Math.round((parseFloat(j.actualCost)||0)/maxCost*100)}%;background:#1565C0;"></div>
+        </div>
+        <div style="font-size:.8rem;font-weight:700;color:#1565C0;white-space:nowrap;">${parseFloat(j.actualCost).toLocaleString()} ฿</div>
+      </div>`).join('') || '<div style="color:var(--gray-400);text-align:center;padding:.5rem;">ยังไม่มีค่าใช้จ่าย</div>'}`;
+
+  // ===== Detail Table =====
+  document.getElementById('report-job-count').textContent = `${jobs.length} รายการ | ${monthName} ${year+543}`;
+  document.getElementById('report-tbody').innerHTML = jobs.length
+    ? [...jobs].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).map(j=>`
+        <tr>
+          <td style="font-weight:700;color:var(--primary-dark);font-size:.8rem;">${j.jobId}</td>
+          <td style="font-size:.8rem;">${formatDate(j.createdAt)}</td>
+          <td style="font-size:.8rem;">${j.userName||'-'}</td>
+          <td style="font-weight:600;">${j.plate}</td>
+          <td><span class="badge-status ${statusClass(j.status)}" style="font-size:.75rem;">${j.status}</span></td>
+          <td style="font-size:.8rem;font-weight:600;color:${j.actualCost?'var(--primary)':'var(--gray-400)'};">${j.actualCost?Number(j.actualCost).toLocaleString()+' ฿':'-'}</td>
+        </tr>`).join('')
+    : '<tr><td colspan="6" class="text-center py-4 text-muted">ไม่มีข้อมูลในเดือนนี้</td></tr>';
+}
+
+function printMonthlyReport() {
+  const year   = parseInt(document.getElementById('report-year').value);
+  const month  = parseInt(document.getElementById('report-month').value);
+  const monthName = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                     'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'][month];
+  const jobs = allJobs.filter(j => {
+    if (!j.createdAt) return false;
+    const d = new Date(j.createdAt);
+    return d.getFullYear()===year && d.getMonth()+1===month;
+  });
+  const totalCost = jobs.reduce((s,j) => s+(parseFloat(j.actualCost)||0), 0);
+  const done = jobs.filter(j=>j.status==='เสร็จสิ้น').length;
+  const pending = jobs.filter(j=>j.status==='รอดำเนินการ').length;
+
+  // capture chart images
+  const statusImg = document.getElementById('chart-status')?.toDataURL('image/png') || '';
+  const dailyImg  = document.getElementById('chart-daily')?.toDataURL('image/png')  || '';
+  const printDate = new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
+
+  // top users
+  const userMap = {};
+  jobs.forEach(j => { const n=j.userName||'ไม่ระบุ'; userMap[n]=(userMap[n]||0)+1; });
+  const topUsers = Object.entries(userMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  const html = `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">
+<title>รายงานประจำเดือน ${monthName} ${year+543}</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=Prompt:wght@600;700&display=swap" rel="stylesheet">
+<style>
+@page { size:A4 portrait; margin:0; }
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:210mm;height:297mm;overflow:hidden;font-family:'Sarabun',sans-serif;font-size:11px;color:#222;background:#fff;}
+.page{width:210mm;height:297mm;display:flex;flex-direction:column;}
+.hd{background:linear-gradient(135deg,#1B5E20,#2E7D32);color:#fff;padding:12px 20px;flex-shrink:0;}
+.hd h1{font-family:'Prompt',sans-serif;font-size:16px;font-weight:700;}
+.hd p{font-size:10px;opacity:.85;margin-top:2px;}
+.hd-sub{font-size:11px;opacity:.9;margin-top:4px;}
+.body{flex:1;padding:12px 20px;display:flex;flex-direction:column;gap:10px;overflow:hidden;}
+.cards{display:flex;gap:8px;}
+.card{flex:1;background:#f8f9fa;border:1px solid #e0e0e0;border-radius:8px;padding:8px;text-align:center;}
+.card-val{font-family:'Prompt',sans-serif;font-size:18px;font-weight:700;}
+.card-lbl{font-size:9px;color:#666;}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.chart-box{border:1px solid #e0e0e0;border-radius:8px;padding:8px;}
+.chart-box h3{font-family:'Prompt',sans-serif;font-size:10px;font-weight:700;color:#2E7D32;margin-bottom:6px;}
+.chart-box img{width:100%;max-height:130px;object-fit:contain;}
+.sec-title{font-family:'Prompt',sans-serif;font-size:10px;font-weight:700;color:#2E7D32;border-bottom:1.5px solid #C8E6C9;padding-bottom:3px;margin-bottom:5px;}
+table{width:100%;border-collapse:collapse;}
+th{background:#2E7D32;color:#fff;padding:4px 6px;font-size:9.5px;text-align:left;}
+td{padding:3.5px 6px;font-size:9.5px;border-bottom:1px solid #f0f0f0;}
+.ft{padding:6px 20px;background:#fafafa;border-top:1px solid #e0e0e0;display:flex;justify-content:space-between;font-size:9px;color:#999;flex-shrink:0;}
+</style></head><body><div class="page">
+<div class="hd">
+  <h1>📊 รายงานสรุปการแจ้งซ่อมรถยนต์</h1>
+  <div class="hd-sub">ประจำเดือน ${monthName} ${year+543} &nbsp;|&nbsp; พิมพ์: ${printDate} &nbsp;|&nbsp; โดย: ${currentUser.name}</div>
+</div>
+<div class="body">
+  <div class="cards">
+    <div class="card"><div class="card-val" style="color:#283593;">${jobs.length}</div><div class="card-lbl">งานทั้งหมด</div></div>
+    <div class="card"><div class="card-val" style="color:#1B5E20;">${done}</div><div class="card-lbl">เสร็จสิ้น</div></div>
+    <div class="card"><div class="card-val" style="color:#E65100;">${pending}</div><div class="card-lbl">รอดำเนินการ</div></div>
+    <div class="card"><div class="card-val" style="color:#2E7D32;">${totalCost.toLocaleString()}</div><div class="card-lbl">ค่าใช้จ่ายรวม (฿)</div></div>
+  </div>
+  <div class="charts">
+    <div class="chart-box"><h3>🍩 สัดส่วนสถานะ</h3>${statusImg?`<img src="${statusImg}">`:''}</div>
+    <div class="chart-box"><h3>📊 แจ้งซ่อมรายวัน</h3>${dailyImg?`<img src="${dailyImg}">`:''}</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;flex:1;min-height:0;">
+    <div>
+      <div class="sec-title">🏆 ผู้แจ้งซ่อมสูงสุด</div>
+      <table><thead><tr><th>#</th><th>ชื่อ</th><th>จำนวน</th></tr></thead><tbody>
+      ${topUsers.map(([n,c],i)=>`<tr><td>${i+1}</td><td>${n}</td><td style="font-weight:700;color:#2E7D32;">${c}</td></tr>`).join('')}
+      </tbody></table>
+    </div>
+    <div>
+      <div class="sec-title">📋 รายการล่าสุด</div>
+      <table><thead><tr><th>เลขงาน</th><th>ทะเบียน</th><th>สถานะ</th><th>ค่าใช้จ่าย</th></tr></thead><tbody>
+      ${[...jobs].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,10).map(j=>`
+        <tr><td style="font-weight:700;">${j.jobId}</td><td>${j.plate}</td><td>${j.status}</td><td>${j.actualCost?Number(j.actualCost).toLocaleString()+' ฿':'-'}</td></tr>`).join('')}
+      </tbody></table>
+    </div>
+  </div>
+</div>
+<div class="ft"><span>รายงานประจำเดือน ${monthName} ${year+543} | ระบบแจ้งซ่อมรถยนต์</span><span>พิมพ์: ${printDate}</span></div>
+</div><script>window.onload=function(){window.print();}<\/script></body></html>`;
+
+  const win = window.open('','_blank');
+  if (!win) { showToast('กรุณาอนุญาต Popup', 'error'); return; }
   win.document.write(html);
   win.document.close();
 }
