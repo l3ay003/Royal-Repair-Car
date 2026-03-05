@@ -750,8 +750,8 @@
    CONFIG — แก้ค่าเหล่านี้ให้ตรงกับของคุณ
    ============================================================ */
 const CONFIG = {
-  LIFF_ID: '2009307051-5UV6LT8a',                          // LIFF ID จาก LINE Developers
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbxXMkVqqmTvvCeYTq58wYb7Vl8QrVKoUXgiqEqv3FgvoTfrH6tA3UCxLznWpFBO5U_7Aw/exec',   // URL จาก Deploy > Web App ใน GAS
+  LIFF_ID: 'YOUR_LIFF_ID',                          // LIFF ID จาก LINE Developers
+  GAS_URL: 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL',   // URL จาก Deploy > Web App ใน GAS
 };
 
 /* ============================================================
@@ -1275,15 +1275,26 @@ async function deleteVehicle(plate) {
 
 /* ============================================================
    GAS CALL
+   Google Apps Script ต้องใช้ GET + query string เพื่อหลีกเลี่ยง CORS
+   สำหรับ payload ใหญ่ (เช่น base64 รูป) จะใช้ FormData POST แทน
    ============================================================ */
-async function gasCall(action, params) {
+async function gasCall(action, params = {}) {
   try {
-    const res = await fetch(CONFIG.GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, ...params })
-    });
-    return await res.json();
+    // ข้อมูลที่มี base64 (รูปภาพ) → ใช้ POST แบบ multipart form
+    if (params.base64) {
+      const form = new FormData();
+      form.append('payload', JSON.stringify({ action, ...params }));
+      const res = await fetch(CONFIG.GAS_URL, { method: 'POST', body: form });
+      const text = await res.text();
+      return JSON.parse(text);
+    }
+
+    // ทุก action อื่น → GET + query string (หลีกเลี่ยง CORS preflight)
+    const payload  = encodeURIComponent(JSON.stringify({ action, ...params }));
+    const url      = `${CONFIG.GAS_URL}?payload=${payload}`;
+    const res      = await fetch(url, { redirect: 'follow' });
+    const text     = await res.text();
+    return JSON.parse(text);
   } catch (e) {
     console.error('GAS error:', e);
     return { status: 'error', message: e.message };
