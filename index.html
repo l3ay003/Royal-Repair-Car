@@ -390,6 +390,18 @@
               <div><div class="stat-value animate-num" id="stat-total">0</div><div class="stat-label">ทั้งหมด</div></div>
             </div>
           </div>
+          <div class="col-6 col-md-3 admin-only-stat" style="display:none;">
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#FFEBEE;"><span class="material-icons" style="color:#C62828;">cancel</span></div>
+              <div><div class="stat-value animate-num" id="stat-rejected">0</div><div class="stat-label">ไม่อนุมัติ</div></div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3 admin-only-stat" style="display:none;">
+            <div class="stat-card">
+              <div class="stat-icon" style="background:#F3E5F5;"><span class="material-icons" style="color:#6A1B9A;">replay</span></div>
+              <div><div class="stat-value animate-num" id="stat-revise">0</div><div class="stat-label">ส่งกลับแก้ไข</div></div>
+            </div>
+          </div>
         </div>
 
         <!-- Recent jobs -->
@@ -408,9 +420,14 @@
       <div class="page-section" id="page-repair-list">
         <div class="page-title">
           <span class="material-icons">build_circle</span> รายการแจ้งซ่อม
-          <button class="btn-primary-custom ms-auto" onclick="openRepairModal()">
-            <span class="material-icons">add</span> แจ้งซ่อม
-          </button>
+          <div class="ms-auto d-flex gap-2">
+            <button class="btn-outline-custom" id="btn-export-csv" onclick="exportCSV()" style="display:none;">
+              <span class="material-icons" style="font-size:1rem;">download</span> Export CSV
+            </button>
+            <button class="btn-primary-custom" onclick="openRepairModal()">
+              <span class="material-icons">add</span> แจ้งซ่อม
+            </button>
+          </div>
         </div>
 
         <!-- Filter & search -->
@@ -757,8 +774,8 @@
    CONFIG — แก้ค่าเหล่านี้ให้ตรงกับของคุณ
    ============================================================ */
 const CONFIG = {
-  LIFF_ID: '2009307051-5UV6LT8a',                          // LIFF ID จาก LINE Developers
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbxXMkVqqmTvvCeYTq58wYb7Vl8QrVKoUXgiqEqv3FgvoTfrH6tA3UCxLznWpFBO5U_7Aw/exec',   // URL จาก Deploy > Web App ใน GAS
+  LIFF_ID: 'YOUR_LIFF_ID',                          // LIFF ID จาก LINE Developers
+  GAS_URL: 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL',   // URL จาก Deploy > Web App ใน GAS
 };
 
 /* ============================================================
@@ -771,6 +788,8 @@ let users         = [];
 let filterStatus  = '';
 let editingJobId  = null;
 let submitting    = false;
+let currentPage   = 1;
+const PAGE_SIZE   = 20;
 
 /* ============================================================
    LIFF INIT
@@ -862,6 +881,8 @@ function bootApp() {
   if (currentUser.role === 'admin') {
     document.getElementById('admin-menu').style.display = 'block';
     document.getElementById('admin-note-section').classList.remove('d-none');
+    const exportBtn = document.getElementById('btn-export-csv');
+    if (exportBtn) exportBtn.style.display = 'inline-flex';
   }
 
   loadData();
@@ -906,6 +927,11 @@ function renderStats() {
   animateNum('stat-repairing', count('กำลังซ่อม'));
   animateNum('stat-done',      count('เสร็จสิ้น'));
   animateNum('stat-total',     mine.length);
+  if (currentUser.role === 'admin') {
+    animateNum('stat-rejected', count('ไม่อนุมัติ'));
+    animateNum('stat-revise',   count('ส่งกลับแก้ไข'));
+    document.querySelectorAll('.admin-only-stat').forEach(el => el.style.display = '');
+  }
 
   // badge
   const pending = allJobs.filter(j => j.status === 'รอดำเนินการ').length;
@@ -945,11 +971,15 @@ function renderRepairTable() {
     });
   }
 
+  // ===== PAGINATION =====
+  const totalPages = Math.max(1, Math.ceil(jobs.length / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+  const paged = jobs.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
+
   // table
-  const tbody = document.getElementById('repair-tbody');
-  if (!jobs.length) { tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">ไม่มีรายการที่ตรงกัน</td></tr>'; }
+  if (!paged.length) { tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">ไม่มีรายการที่ตรงกัน</td></tr>'; }
   else {
-    tbody.innerHTML = jobs.map(j => `
+    tbody.innerHTML = paged.map(j => `
       <tr>
         <td><span style="font-weight:600;font-size:.82rem;color:var(--primary-dark);">${j.jobId}</span></td>
         <td>${formatDate(j.createdAt)}</td>
@@ -969,10 +999,46 @@ function renderRepairTable() {
       </tr>`).join('');
   }
 
+  // render pagination bar
+  renderPagination(totalPages, jobs.length);
+
   // mobile cards
   const mc = document.getElementById('repair-cards-mobile');
-  if (!jobs.length) { mc.innerHTML = '<div class="empty-state"><span class="material-icons">inbox</span>ไม่มีรายการ</div>'; }
-  else mc.innerHTML = jobs.map(jobCard).join('');
+  if (!paged.length) { mc.innerHTML = '<div class="empty-state"><span class="material-icons">inbox</span>ไม่มีรายการ</div>'; }
+  else mc.innerHTML = paged.map(jobCard).join('');
+}
+
+function renderPagination(totalPages, totalItems) {
+  let el = document.getElementById('pagination-bar');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'pagination-bar';
+    el.style.cssText = 'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-top:.75rem;font-size:.85rem;';
+    const wrapper = document.querySelector('#page-repair-list .data-table-wrapper');
+    if (wrapper) wrapper.after(el);
+  }
+  if (totalPages <= 1) { el.innerHTML = `<span style="color:var(--gray-500);">ทั้งหมด ${totalItems} รายการ</span>`; return; }
+
+  let pages = '';
+  for (let i=1; i<=totalPages; i++) {
+    const active = i===currentPage;
+    pages += `<button onclick="goPage(${i})" style="min-width:32px;height:32px;border-radius:6px;border:1.5px solid ${active?'var(--primary)':'var(--gray-300)'};background:${active?'var(--primary)':'#fff'};color:${active?'#fff':'var(--gray-700)'};font-weight:600;cursor:pointer;font-size:.82rem;">${i}</button>`;
+  }
+  el.innerHTML = `
+    <span style="color:var(--gray-500);">ทั้งหมด ${totalItems} รายการ | หน้า ${currentPage}/${totalPages}</span>
+    <div style="display:flex;gap:.3rem;align-items:center;">
+      <button onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''} style="min-width:32px;height:32px;border-radius:6px;border:1.5px solid var(--gray-300);background:#fff;cursor:pointer;">◀</button>
+      ${pages}
+      <button onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''} style="min-width:32px;height:32px;border-radius:6px;border:1.5px solid var(--gray-300);background:#fff;cursor:pointer;">▶</button>
+    </div>`;
+}
+
+function goPage(p) {
+  const totalPages = Math.max(1, Math.ceil(allJobs.length / PAGE_SIZE));
+  if (p < 1 || p > totalPages) return;
+  currentPage = p;
+  renderRepairTable();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function jobCard(j) {
@@ -1094,8 +1160,8 @@ async function submitRepair() {
   let imageUrl = ''; let viewUrl = '';
   const imgFile = document.getElementById('f-image').files[0];
   if (imgFile) {
-    const b64 = await toBase64(imgFile);
-    const upRes = await gasCall('uploadImage', { base64: b64, mimeType: imgFile.type, filename: imgFile.name, folderType: 'repair' });
+    const compressed = await compressImage(imgFile);
+    const upRes = await gasCall('uploadImage', { base64: compressed.b64, mimeType: compressed.mime, filename: compressed.filename, folderType: 'repair' });
     if (upRes.status !== 'ok') { showLoading(false); submitting = false; showToast('อัปโหลดรูปไม่สำเร็จ: ' + (upRes.message || ''), 'error'); return; }
     imageUrl = upRes.url || '';
     viewUrl  = upRes.viewUrl || '';
@@ -1195,8 +1261,8 @@ async function submitStatusChange() {
   showLoading(true);
   let billUrl = ''; let billViewUrl = '';
   if (billFile) {
-    const b64 = await toBase64(billFile);
-    const upRes = await gasCall('uploadImage', { base64: b64, mimeType: billFile.type, filename: billFile.name, folderType: 'bill' });
+    const compressed = await compressImage(billFile, 1600, 1600, 0.85);
+    const upRes = await gasCall('uploadImage', { base64: compressed.b64, mimeType: compressed.mime, filename: compressed.filename, folderType: 'bill' });
     if (upRes.status !== 'ok') { showLoading(false); showToast('อัปโหลดบิลไม่สำเร็จ: ' + (upRes.message || ''), 'error'); return; }
     billUrl     = upRes.url     || '';
     billViewUrl = upRes.viewUrl || '';
@@ -1399,6 +1465,37 @@ function viewImage(url) {
   showModal('modalImage');
 }
 
+/* Compress รูปก่อน upload — resize ให้ไม่เกิน maxW/maxH และ quality 0.8 */
+function compressImage(file, maxW = 1200, maxH = 1200, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = e => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxW || h > maxH) {
+          const ratio = Math.min(maxW / w, maxH / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const mime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+        const dataUrl = canvas.toDataURL(mime, quality);
+        const b64 = dataUrl.split(',')[1];
+        const kb  = Math.round(b64.length * 0.75 / 1024);
+        console.log(`Compressed: ${img.width}x${img.height} → ${w}x${h} | ~${kb} KB`);
+        resolve({ b64, mime, filename: file.name });
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function toBase64(file) {
   return new Promise((res,rej) => {
     const r = new FileReader();
@@ -1465,6 +1562,44 @@ async function executeDeleteJob(jobId) {
   }
 }
 
+/* ============================================================
+   EXPORT CSV
+   ============================================================ */
+async function exportCSV() {
+  const btn = document.getElementById('btn-export-csv');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="material-icons" style="font-size:1rem;">hourglass_empty</span> กำลัง Export...'; }
+  showLoading(true);
+
+  const isAdmin = currentUser.role === 'admin';
+  const res = await gasCall('exportJobs', {
+    lineUid: currentUser.lineUid,
+    isAdmin,
+    filterStatus,
+  });
+  showLoading(false);
+  if (btn) { btn.disabled = false; btn.innerHTML = '<span class="material-icons" style="font-size:1rem;">download</span> Export CSV'; }
+
+  if (res.status !== 'ok') { showToast('Export ไม่สำเร็จ: ' + res.message, 'error'); return; }
+
+  // สร้าง CSV
+  const BOM    = '\uFEFF'; // UTF-8 BOM สำหรับ Excel ภาษาไทย
+  const escape = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const lines  = [
+    res.headers.map(escape).join(','),
+    ...res.rows.map(row => row.map(escape).join(','))
+  ];
+  const csv  = BOM + lines.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const date = new Date().toLocaleDateString('th-TH').replace(/\//g,'-');
+  a.href     = url;
+  a.download = `แจ้งซ่อมรถ_${date}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Export สำเร็จ ${res.total} รายการ ✅`);
+}
+
 function logout() {
   if (confirm('ออกจากระบบ?')) {
     currentUser = null;
@@ -1480,13 +1615,14 @@ document.querySelectorAll('.filter-pill').forEach(p => {
     document.querySelectorAll('.filter-pill').forEach(x=>x.classList.remove('active'));
     p.classList.add('active');
     filterStatus = p.dataset.status;
+    currentPage = 1;
     renderRepairTable();
   });
 });
 
 // Search & date filter live
-document.getElementById('search-input').addEventListener('input', renderRepairTable);
-document.getElementById('filter-date').addEventListener('change', renderRepairTable);
+document.getElementById('search-input').addEventListener('input', () => { currentPage = 1; renderRepairTable(); });
+document.getElementById('filter-date').addEventListener('change', () => { currentPage = 1; renderRepairTable(); });
 </script>
 </body>
 </html>
