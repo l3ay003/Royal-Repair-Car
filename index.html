@@ -750,8 +750,8 @@
    CONFIG — แก้ค่าเหล่านี้ให้ตรงกับของคุณ
    ============================================================ */
 const CONFIG = {
-  LIFF_ID: '2009307051-5UV6LT8a',                          // LIFF ID จาก LINE Developers
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbxXMkVqqmTvvCeYTq58wYb7Vl8QrVKoUXgiqEqv3FgvoTfrH6tA3UCxLznWpFBO5U_7Aw/exec',   // URL จาก Deploy > Web App ใน GAS
+  LIFF_ID: 'YOUR_LIFF_ID',                          // LIFF ID จาก LINE Developers
+  GAS_URL: 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL',   // URL จาก Deploy > Web App ใน GAS
 };
 
 /* ============================================================
@@ -1275,30 +1275,46 @@ async function deleteVehicle(plate) {
 
 /* ============================================================
    GAS CALL
-   Google Apps Script ต้องใช้ GET + query string เพื่อหลีกเลี่ยง CORS
-   สำหรับ payload ใหญ่ (เช่น base64 รูป) จะใช้ FormData POST แทน
+   ใช้ XMLHttpRequest แทน fetch เพราะ LIFF บน LINE app
+   บล็อก fetch ที่มี redirect (GAS redirect ทุก request)
+   XHR จัดการ redirect ได้อัตโนมัติและทำงานได้ใน LIFF
    ============================================================ */
-async function gasCall(action, params = {}) {
-  try {
-    // ข้อมูลที่มี base64 (รูปภาพ) → ใช้ POST แบบ multipart form
-    if (params.base64) {
-      const form = new FormData();
-      form.append('payload', JSON.stringify({ action, ...params }));
-      const res = await fetch(CONFIG.GAS_URL, { method: 'POST', body: form });
-      const text = await res.text();
-      return JSON.parse(text);
-    }
+function gasCall(action, params = {}) {
+  return new Promise((resolve) => {
+    try {
+      const payload = JSON.stringify({ action, ...params });
+      const url     = CONFIG.GAS_URL + '?payload=' + encodeURIComponent(payload);
 
-    // ทุก action อื่น → GET + query string (หลีกเลี่ยง CORS preflight)
-    const payload  = encodeURIComponent(JSON.stringify({ action, ...params }));
-    const url      = `${CONFIG.GAS_URL}?payload=${payload}`;
-    const res      = await fetch(url, { redirect: 'follow' });
-    const text     = await res.text();
-    return JSON.parse(text);
-  } catch (e) {
-    console.error('GAS error:', e);
-    return { status: 'error', message: e.message };
-  }
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.withCredentials = false;
+
+      xhr.onload = function () {
+        try {
+          const json = JSON.parse(xhr.responseText);
+          resolve(json);
+        } catch (e) {
+          console.error('GAS parse error:', xhr.responseText);
+          resolve({ status: 'error', message: 'Parse error: ' + xhr.responseText.substring(0, 100) });
+        }
+      };
+
+      xhr.onerror = function () {
+        console.error('XHR network error');
+        resolve({ status: 'error', message: 'Network error — ตรวจสอบ GAS_URL อีกครั้ง' });
+      };
+
+      xhr.ontimeout = function () {
+        resolve({ status: 'error', message: 'Request timeout' });
+      };
+
+      xhr.timeout = 30000;
+      xhr.send();
+    } catch (e) {
+      console.error('gasCall exception:', e);
+      resolve({ status: 'error', message: e.message });
+    }
+  });
 }
 
 /* ============================================================
