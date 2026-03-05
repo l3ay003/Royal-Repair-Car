@@ -230,6 +230,24 @@
     .fab-repair .fab-label { display: block; }
   }
 
+  /* Auto-refresh indicator */
+  .refresh-bar {
+    position: fixed; top: 64px; left: 0; right: 0; height: 3px;
+    background: transparent; z-index: 1049; pointer-events: none;
+  }
+  .refresh-bar-fill {
+    height: 100%; width: 0%; background: var(--primary-light);
+    transition: width linear; border-radius: 0 2px 2px 0;
+  }
+  .refresh-badge {
+    position: fixed; bottom: 96px; right: 24px;
+    background: rgba(0,0,0,.55); color: #fff;
+    font-size: .75rem; padding: 4px 10px; border-radius: 20px;
+    z-index: 1039; pointer-events: none; opacity: 0;
+    transition: opacity .3s;
+  }
+  .refresh-badge.show { opacity: 1; }
+
   /* ======= MODAL OVERRIDES ======= */
   .modal-content { border:none; border-radius:var(--radius-lg); box-shadow:var(--shadow-lg); }
   .modal-header-custom {
@@ -396,9 +414,9 @@
       <button class="btn-sm-icon" style="background:rgba(255,255,255,.15);color:#fff;" id="sidebar-toggle">
         <span class="material-icons">menu</span>
       </button>
-      <img id="nav-logo" src="royal-d.png"
+      <img id="nav-logo" src="logo.png"
            onerror="this.style.display='none';document.getElementById('nav-logo-fallback').style.display='inline';"
-           style="height:120px;width:120px;object-fit:contain;border-radius:8px;padding:0;">
+           style="height:48px;width:48px;object-fit:contain;border-radius:8px;padding:0;">
       <span class="material-icons" id="nav-logo-fallback" style="color:#fff;font-size:1.4rem;display:none;">directions_car</span>
       <span class="brand-text">ระบบแจ้งซ่อมรถยนต์</span>
     </div>
@@ -595,6 +613,9 @@
             <select id="report-month" class="form-select form-select-sm" style="width:130px;font-size:.85rem;"></select>
             <button class="btn-repair-header" onclick="generateReport()" style="padding:.45rem 1rem;">
               <span class="material-icons" style="font-size:1rem;">refresh</span> สร้างรายงาน
+            </button>
+            <button class="btn-outline-custom btn-sm" onclick="exportMonthlyCSV()">
+              <span class="material-icons" style="font-size:.9rem;">download</span> CSV
             </button>
             <button class="btn-outline-custom btn-sm" onclick="printMonthlyReport()">
               <span class="material-icons" style="font-size:.9rem;">picture_as_pdf</span> PDF
@@ -956,8 +977,8 @@
    CONFIG — แก้ค่าเหล่านี้ให้ตรงกับของคุณ
    ============================================================ */
 const CONFIG = {
-  LIFF_ID: '2009307051-5UV6LT8a',                          // LIFF ID จาก LINE Developers
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbxXMkVqqmTvvCeYTq58wYb7Vl8QrVKoUXgiqEqv3FgvoTfrH6tA3UCxLznWpFBO5U_7Aw/exec',   // URL จาก Deploy > Web App ใน GAS
+  LIFF_ID: 'YOUR_LIFF_ID',                          // LIFF ID จาก LINE Developers
+  GAS_URL: 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL',   // URL จาก Deploy > Web App ใน GAS
 };
 
 /* ============================================================
@@ -1069,13 +1090,53 @@ function bootApp() {
 
   loadData();
   showLoading(false);
+  startAutoRefresh();
 }
 
 /* ============================================================
    DATA LOADING
    ============================================================ */
-async function loadData() {
-  showLoading(true);
+let _refreshTimer   = null;
+let _refreshInterval = 30; // วินาที
+let _refreshRemain   = 30;
+let _barTimer        = null;
+
+function startAutoRefresh() {
+  stopAutoRefresh();
+  _refreshRemain = _refreshInterval;
+  updateRefreshBar();
+
+  _refreshTimer = setInterval(async () => {
+    // แสดง badge
+    const badge = document.getElementById('refresh-badge');
+    if (badge) { badge.classList.add('show'); setTimeout(()=>badge.classList.remove('show'), 2000); }
+
+    await loadData(true); // silent = ไม่แสดง loading overlay
+    _refreshRemain = _refreshInterval;
+  }, _refreshInterval * 1000);
+
+  // countdown bar
+  _barTimer = setInterval(() => {
+    _refreshRemain = Math.max(0, _refreshRemain - 0.1);
+    updateRefreshBar();
+  }, 100);
+}
+
+function stopAutoRefresh() {
+  if (_refreshTimer) { clearInterval(_refreshTimer); _refreshTimer = null; }
+  if (_barTimer)     { clearInterval(_barTimer);     _barTimer = null; }
+}
+
+function updateRefreshBar() {
+  const fill = document.getElementById('refresh-bar-fill');
+  if (!fill) return;
+  const pct = (1 - _refreshRemain / _refreshInterval) * 100;
+  fill.style.transition = _refreshRemain < _refreshInterval ? 'width .1s linear' : 'none';
+  fill.style.width = pct + '%';
+}
+
+async function loadData(silent = false) {
+  if (!silent) showLoading(true);
   try {
     const isAdmin = currentUser?.role === 'admin';
     const [jobsRes, vehiclesRes, usersRes] = await Promise.all([
@@ -1099,7 +1160,7 @@ async function loadData() {
     console.error('loadData error:', e);
     showToast('โหลดข้อมูลไม่สำเร็จ: ' + e.message, 'error');
   }
-  showLoading(false);
+  if (!silent) showLoading(false);
 }
 
 /* ============================================================
@@ -2122,6 +2183,19 @@ function printJobPDF(jobId) {
 
 </div>
 <script>window.onload=function(){window.print();}<\/script>
+  <script>
+  // หยุด refresh เมื่อ tab ซ่อน เพื่อประหยัด quota GAS
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopAutoRefresh();
+    } else {
+      if (currentUser) {
+        loadData(true);
+        startAutoRefresh();
+      }
+    }
+  });
+  </script>
 </body>
 </html>`;
 
@@ -2173,6 +2247,16 @@ function generateReport() {
   const year  = parseInt(yearEl.value);
   const month = parseInt(monthEl.value);
   if (isNaN(year) || isNaN(month)) { showToast('กรุณาเลือกปีและเดือน','error'); return; }
+
+  // reset canvas และ empty-state เก่าออกก่อน
+  ['chart-status','chart-daily'].forEach(id => {
+    const cv = document.getElementById(id);
+    if (!cv) return;
+    // ลบ empty-state div ที่อาจถูกเพิ่มไว้
+    const siblings = cv.parentElement.querySelectorAll('div:not([style*="font-weight"])');
+    siblings.forEach(s => { if (s.textContent.includes('ไม่มีข้อมูล')) s.remove(); });
+    cv.style.display = '';
+  });
   const monthName = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
                      'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'][month];
 
@@ -2195,7 +2279,13 @@ function generateReport() {
     { val: totalCost > 0 ? totalCost.toLocaleString()+' ฿' : '-', lbl: 'ค่าใช้จ่ายรวม', icon: 'payments', c: '#2E7D32', bg: '#E8F5E9' },
   ];
 
-  document.getElementById('report-summary-row').innerHTML = summaryCards.map(s => `
+  const monthLabel = monthName + ' ' + (year+543);
+  document.getElementById('report-summary-row').innerHTML = `
+    <div style="width:100%;font-family:'Prompt',sans-serif;font-size:.82rem;color:var(--gray-500);margin-bottom:.25rem;">
+      📅 สรุปประจำเดือน <strong style="color:var(--primary-dark);">${monthLabel}</strong>
+      ${jobs.length===0 ? '<span style="margin-left:.5rem;color:var(--danger);font-size:.78rem;">⚠️ ไม่มีข้อมูลในเดือนนี้</span>' : ''}
+    </div>` +
+    summaryCards.map(s => `
     <div class="report-summary-card">
       <div style="width:40px;height:40px;background:${s.bg};border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .5rem;">
         <span class="material-icons" style="color:${s.c};font-size:1.3rem;">${s.icon}</span>
@@ -2206,22 +2296,30 @@ function generateReport() {
 
   // ===== Chart 1: Status Pie =====
   const statusCounts = statuses.map(s => jobs.filter(j => j.status===s).length);
+  const hasStatusData = statusCounts.some(c => c > 0);
   if (chartStatus) chartStatus.destroy();
-  chartStatus = new Chart(document.getElementById('chart-status'), {
-    type: 'doughnut',
-    data: {
-      labels: statuses,
-      datasets: [{ data: statusCounts, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }]
-    },
-    options: {
-      plugins: {
-        legend: { position:'right', labels:{ font:{size:11}, boxWidth:14, padding:8 } }
+  const ctxStatus = document.getElementById('chart-status');
+  if (!hasStatusData) {
+    ctxStatus.style.display = 'none';
+    ctxStatus.parentElement.innerHTML += '<div style="text-align:center;padding:2rem;color:var(--gray-400);">ไม่มีข้อมูลในเดือนนี้</div>';
+  } else {
+    ctxStatus.style.display = '';
+    chartStatus = new Chart(ctxStatus, {
+      type: 'doughnut',
+      data: {
+        labels: statuses,
+        datasets: [{ data: statusCounts, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }]
       },
-      cutout: '60%',
-      responsive: true,
-      maintainAspectRatio: true,
-    }
-  });
+      options: {
+        plugins: {
+          legend: { position:'right', labels:{ font:{size:11}, boxWidth:14, padding:8 } }
+        },
+        cutout: '60%',
+        responsive: true,
+        maintainAspectRatio: true,
+      }
+    });
+  }
 
   // ===== Chart 2: Daily Bar =====
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -2230,28 +2328,41 @@ function generateReport() {
     jobs.filter(j => { const dt=new Date(j.createdAt); return dt.getDate()===d; }).length
   );
   if (chartDaily) chartDaily.destroy();
-  chartDaily = new Chart(document.getElementById('chart-daily'), {
-    type: 'bar',
-    data: {
-      labels: dailyLabels,
-      datasets: [{
-        label: 'จำนวนงาน',
-        data: dailyCounts,
-        backgroundColor: 'rgba(46,125,50,.7)',
-        borderRadius: 4,
-        borderSkipped: false,
-      }]
-    },
-    options: {
-      plugins: { legend:{ display:false } },
-      scales: {
-        x: { grid:{display:false}, ticks:{font:{size:10}} },
-        y: { beginAtZero:true, ticks:{ stepSize:1, font:{size:10} }, grid:{ color:'#f0f0f0' } }
+  const ctxDaily = document.getElementById('chart-daily');
+  if (!jobs.length) {
+    ctxDaily.style.display = 'none';
+    ctxDaily.parentElement.innerHTML += '<div style="text-align:center;padding:2rem;color:var(--gray-400);">ไม่มีข้อมูลในเดือนนี้</div>';
+  } else {
+    ctxDaily.style.display = '';
+    // highlight วันที่มีงานมากสุด
+    const maxDay = Math.max(...dailyCounts);
+    const barColors = dailyCounts.map(c => c === maxDay && c > 0 ? 'rgba(46,125,50,1)' : 'rgba(46,125,50,.45)');
+    chartDaily = new Chart(ctxDaily, {
+      type: 'bar',
+      data: {
+        labels: dailyLabels,
+        datasets: [{
+          label: 'จำนวนงาน',
+          data: dailyCounts,
+          backgroundColor: barColors,
+          borderRadius: 4,
+          borderSkipped: false,
+        }]
       },
-      responsive: true,
-      maintainAspectRatio: true,
-    }
-  });
+      options: {
+        plugins: {
+          legend:{ display:false },
+          tooltip: { callbacks: { title: ctx => 'วันที่ '+ctx[0].label } }
+        },
+        scales: {
+          x: { grid:{display:false}, ticks:{font:{size:10}} },
+          y: { beginAtZero:true, ticks:{ stepSize:1, precision:0, font:{size:10} }, grid:{ color:'#f0f0f0' } }
+        },
+        responsive: true,
+        maintainAspectRatio: true,
+      }
+    });
+  }
 
   // ===== Top Users =====
   const userMap = {};
@@ -2310,6 +2421,34 @@ function generateReport() {
           <td style="font-size:.8rem;font-weight:600;color:${j.actualCost?'var(--primary)':'var(--gray-400)'};">${j.actualCost?Number(j.actualCost).toLocaleString()+' ฿':'-'}</td>
         </tr>`).join('')
     : '<tr><td colspan="6" class="text-center py-4 text-muted">ไม่มีข้อมูลในเดือนนี้</td></tr>';
+}
+
+function exportMonthlyCSV() {
+  const year  = parseInt(document.getElementById('report-year').value);
+  const month = parseInt(document.getElementById('report-month').value);
+  const monthName = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                     'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'][month];
+  const jobs = allJobs.filter(j => {
+    if (!j.createdAt) return false;
+    const d = new Date(j.createdAt);
+    return d.getFullYear()===year && d.getMonth()+1===month;
+  });
+  if (!jobs.length) { showToast('ไม่มีข้อมูลในเดือนนี้', 'error'); return; }
+
+  const BOM = '\uFEFF';
+  const esc = v => '"'+String(v||'').replace(/"/g,'""')+'"';
+  const headers = ['เลขที่งาน','วันที่แจ้ง','ผู้แจ้ง','ทะเบียน','ไมล์','อาการ','สถานที่','สถานะ','หมายเหตุ','ค่าใช้จ่าย'];
+  const rows = [...jobs]
+    .sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt))
+    .map(j=>[j.jobId,formatDate(j.createdAt),j.userName,j.plate,j.mileage,j.detail,j.location,j.status,j.note,j.actualCost||''].map(esc).join(','));
+
+  const csv  = BOM + [headers.map(esc).join(','), ...rows].join('\n');
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `รายงาน_${monthName}_${year+543}.csv`; a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Export CSV ${jobs.length} รายการ ✅`);
 }
 
 function printMonthlyReport() {
@@ -2405,6 +2544,7 @@ td{padding:3.5px 6px;font-size:9.5px;border-bottom:1px solid #f0f0f0;}
 
 function logout() {
   if (confirm('ออกจากระบบ?')) {
+    stopAutoRefresh();
     currentUser = null;
     try { liff.logout(); } catch(e){}
     document.getElementById('main-app').style.display='none';
@@ -2427,11 +2567,28 @@ document.querySelectorAll('.filter-pill').forEach(p => {
 document.getElementById('search-input').addEventListener('input', () => { currentPage = 1; renderRepairTable(); });
 document.getElementById('filter-date').addEventListener('change', () => { currentPage = 1; renderRepairTable(); });
 </script>
+  <!-- Auto-refresh progress bar -->
+  <div class="refresh-bar"><div class="refresh-bar-fill" id="refresh-bar-fill"></div></div>
+  <div class="refresh-badge" id="refresh-badge">🔄 กำลังอัปเดต...</div>
+
   <!-- FAB แจ้งซ่อม -->
   <button class="fab-repair pulse" id="fab-repair" onclick="openRepairModal()" title="แจ้งซ่อมรถยนต์" style="display:none;">
     <span class="fab-icon"><span class="material-icons">build</span></span>
     <span class="fab-label">แจ้งซ่อมรถ</span>
   </button>
 
+  <script>
+  // หยุด refresh เมื่อ tab ซ่อน เพื่อประหยัด quota GAS
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopAutoRefresh();
+    } else {
+      if (currentUser) {
+        loadData(true);
+        startAutoRefresh();
+      }
+    }
+  });
+  </script>
 </body>
 </html>
