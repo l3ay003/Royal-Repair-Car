@@ -808,8 +808,8 @@
               </div>
             </div>
             <div class="col-12 col-md-6">
-              <label class="form-label">สถานที่ซ่อม <span class="req">*</span></label>
-              <input type="text" class="form-control" id="f-location" placeholder="ชื่ออู่ / สถานที่">
+              <label class="form-label">สถานที่ซ่อม</label>
+              <input type="text" class="form-control" id="f-location" placeholder="ชื่ออู่ / สถานที่ (ไม่บังคับ)">
             </div>
             <div class="col-12">
               <label class="form-label">แนบรูปภาพประกอบ</label>
@@ -1444,7 +1444,7 @@ async function submitRepair() {
   const location = document.getElementById('f-location').value.trim();
   const note     = document.getElementById('f-note').value.trim();
 
-  if (!plate || !mileage || !detail || !location) { showToast('กรุณากรอกข้อมูลที่จำเป็นให้ครบ', 'error'); return; }
+  if (!plate || !mileage || !detail) { showToast('กรุณากรอกข้อมูลที่จำเป็นให้ครบ', 'error'); return; }
   if (isNaN(mileage) || Number(mileage) < 0) { showToast('เลขไมล์ต้องเป็นตัวเลข', 'error'); return; }
   if (estimate && (isNaN(estimate) || Number(estimate) < 0)) { showToast('ประเมินค่าใช้จ่ายต้องเป็นตัวเลข', 'error'); return; }
 
@@ -2275,11 +2275,11 @@ async function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / หัวหน้า</div>
+          <div class="sign-lbl">ผู้อนุมัติ / หัวหน้างาน</div>
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / เจ้านาย</div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>
