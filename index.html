@@ -423,9 +423,9 @@
       <button class="btn-sm-icon" style="background:rgba(255,255,255,.15);color:#fff;" id="sidebar-toggle">
         <span class="material-icons">menu</span>
       </button>
-      <img id="nav-logo" src="royal-d.png"
+      <img id="nav-logo" src="logo.png"
            onerror="this.style.display='none';document.getElementById('nav-logo-fallback').style.display='inline';"
-           style="height:80px;width:80px;object-fit:contain;border-radius:8px;padding:0;">
+           style="height:48px;width:48px;object-fit:contain;border-radius:8px;padding:0;">
       <span class="material-icons" id="nav-logo-fallback" style="color:#fff;font-size:1.4rem;display:none;">directions_car</span>
       <span class="brand-text">ระบบแจ้งซ่อมรถยนต์</span>
     </div>
@@ -993,8 +993,8 @@
    CONFIG — แก้ค่าเหล่านี้ให้ตรงกับของคุณ
    ============================================================ */
 const CONFIG = {
-  LIFF_ID: '2009307051-5UV6LT8a',                          // LIFF ID จาก LINE Developers
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbxXMkVqqmTvvCeYTq58wYb7Vl8QrVKoUXgiqEqv3FgvoTfrH6tA3UCxLznWpFBO5U_7Aw/exec',   // URL จาก Deploy > Web App ใน GAS
+  LIFF_ID: 'YOUR_LIFF_ID',                          // LIFF ID จาก LINE Developers
+  GAS_URL: 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL',   // URL จาก Deploy > Web App ใน GAS
 };
 
 /* ============================================================
@@ -1430,10 +1430,16 @@ async function submitRepair() {
   const imgFile = document.getElementById('f-image').files[0];
   if (imgFile) {
     const compressed = await compressImage(imgFile);
-    const upRes = await gasCall('uploadImage', { base64: compressed.b64, mimeType: compressed.mime, filename: compressed.filename, folderType: 'repair' });
+    // ส่ง jobId ถ้าแก้ไข (editingJobId) หรือส่งค่าว่างถ้าสร้างใหม่ (GAS จะใช้ชื่อ temp ก่อน แล้ว rename หลัง createJob)
+    const upRes = await gasCall('uploadImage', {
+      base64: compressed.b64, mimeType: compressed.mime,
+      filename: compressed.filename, folderType: 'repair',
+      jobId: editingJobId || ''
+    });
     if (upRes.status !== 'ok') { showLoading(false); submitting = false; showToast('อัปโหลดรูปไม่สำเร็จ: ' + (upRes.message || ''), 'error'); return; }
     imageUrl = upRes.url || '';
     viewUrl  = upRes.viewUrl || '';
+    window._lastUploadedFileId = upRes.fileId || '';
   }
 
   const action = editingJobId ? 'updateJob' : 'createJob';
@@ -1441,7 +1447,8 @@ async function submitRepair() {
     lineUid: currentUser.lineUid,
     userName: currentUser.name,
     plate, mileage, detail, estimate, location, imageUrl, viewUrl, note,
-    jobId: editingJobId || ''
+    jobId: editingJobId || '',
+    imageFileId: (!editingJobId && imgFile) ? (window._lastUploadedFileId || '') : ''
   };
 
   const res = await gasCall(action, payload);
@@ -1536,7 +1543,11 @@ async function submitStatusChange() {
   let billUrl = ''; let billViewUrl = '';
   if (billFile) {
     const compressed = await compressImage(billFile, 1600, 1600, 0.85);
-    const upRes = await gasCall('uploadImage', { base64: compressed.b64, mimeType: compressed.mime, filename: compressed.filename, folderType: 'bill' });
+    const upRes = await gasCall('uploadImage', {
+      base64: compressed.b64, mimeType: compressed.mime,
+      filename: compressed.filename, folderType: 'bill',
+      jobId: jobId  // ส่ง jobId ตั้งชื่อไฟล์ เช่น JOB2506001_bill.jpg
+    });
     if (upRes.status !== 'ok') { showLoading(false); showToast('อัปโหลดบิลไม่สำเร็จ: ' + (upRes.message || ''), 'error'); return; }
     billUrl     = upRes.url     || '';
     billViewUrl = upRes.viewUrl || '';
@@ -2238,11 +2249,11 @@ async function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / หัวหน้า</div>
+          <div class="sign-lbl">ผู้อนุมัติ / หัวหน้างาน</div>
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / เจ้านาย</div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>
