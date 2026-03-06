@@ -450,7 +450,7 @@
         <div class="user-info-text" id="nav-username">กำลังโหลด...</div>
         <span class="user-role-badge" id="nav-role">User</span>
       </div>
-      <img src="https://via.placeholder.com/36" id="nav-avatar" class="user-avatar" alt="avatar">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Ccircle cx='22' cy='22' r='22' fill='%23C8E6C9'/%3E%3Ccircle cx='22' cy='17' r='7' fill='%232E7D32'/%3E%3Cellipse cx='22' cy='36' rx='12' ry='8' fill='%232E7D32'/%3E%3C/svg%3E" id="nav-avatar" class="user-avatar" alt="avatar">
     </div>
   </nav>
 
@@ -498,7 +498,7 @@
 
         <!-- Profile card -->
         <div class="profile-card-sm mb-3">
-          <img src="https://via.placeholder.com/44" id="dash-avatar" alt="">
+          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Ccircle cx='22' cy='22' r='22' fill='%23C8E6C9'/%3E%3Ccircle cx='22' cy='17' r='7' fill='%232E7D32'/%3E%3Cellipse cx='22' cy='36' rx='12' ry='8' fill='%232E7D32'/%3E%3C/svg%3E" id="dash-avatar" alt="">
           <div>
             <div class="name" id="dash-name">กำลังโหลด...</div>
             <div class="line-id" id="dash-dept">-</div>
@@ -773,7 +773,7 @@
       <div class="modal-body">
         <!-- User profile -->
         <div class="profile-card-sm">
-          <img src="https://via.placeholder.com/44" id="form-avatar" alt="">
+          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Ccircle cx='22' cy='22' r='22' fill='%23C8E6C9'/%3E%3Ccircle cx='22' cy='17' r='7' fill='%232E7D32'/%3E%3Cellipse cx='22' cy='36' rx='12' ry='8' fill='%232E7D32'/%3E%3C/svg%3E" id="form-avatar" alt="">
           <div>
             <div class="name" id="form-username">-</div>
             <div class="line-id" id="form-lineuid">-</div>
@@ -1038,7 +1038,7 @@ async function initLiff() {
 
     const profile    = await liff.getProfile();
     const lineUid    = profile.userId;
-    const lineAvatar = profile.pictureUrl  || 'https://via.placeholder.com/44';
+    const lineAvatar = profile.pictureUrl  || 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Ccircle cx='22' cy='22' r='22' fill='%23C8E6C9'/%3E%3Ccircle cx='22' cy='17' r='7' fill='%232E7D32'/%3E%3Cellipse cx='22' cy='36' rx='12' ry='8' fill='%232E7D32'/%3E%3C/svg%3E';
     const lineName   = profile.displayName || 'ผู้ใช้งาน';
 
     // ลองดึง user จาก Sheet ก่อน
@@ -1105,7 +1105,7 @@ function bootApp() {
   
 
   // Admin menu
-  if (currentUser.role === 'admin') {
+  if ((currentUser.role || '') === 'admin') {
     document.getElementById('admin-menu').style.display = 'block';
     document.getElementById('admin-note-section').classList.remove('d-none');
     const exportBtn = document.getElementById('btn-export-csv');
@@ -1159,7 +1159,10 @@ function updateRefreshBar() {
   fill.style.width = pct + '%';
 }
 
+let _loadingInProgress = false;
 async function loadData(silent = false) {
+  if (_loadingInProgress) return; // ป้องกัน concurrent calls
+  _loadingInProgress = true;
   if (!silent) showLoading(true);
   try {
     const isAdmin = currentUser?.role === 'admin';
@@ -1184,6 +1187,7 @@ async function loadData(silent = false) {
     console.error('loadData error:', e);
     showToast('โหลดข้อมูลไม่สำเร็จ: ' + e.message, 'error');
   }
+  _loadingInProgress = false;
   if (!silent) showLoading(false);
 }
 
@@ -1197,7 +1201,7 @@ function renderStats() {
   animateNum('stat-repairing', count('กำลังซ่อม'));
   animateNum('stat-done',      count('เสร็จสิ้น'));
   animateNum('stat-total',     mine.length);
-  if (currentUser.role === 'admin') {
+  if ((currentUser.role || '') === 'admin') {
     animateNum('stat-rejected', count('ไม่อนุมัติ'));
     animateNum('stat-revise',   count('ส่งกลับแก้ไข'));
     document.querySelectorAll('.admin-only-stat').forEach(el => el.style.display = '');
@@ -1227,7 +1231,7 @@ function renderRepairTable() {
 
   // search
   const q = document.getElementById('search-input').value.toLowerCase();
-  if (q) jobs = jobs.filter(j => (j.jobId+j.plate+j.userName+j.detail).toLowerCase().includes(q));
+  if (q) jobs = jobs.filter(j => ((j.jobId||'')+(j.plate||'')+(j.userName||'')+(j.detail||'')).toLowerCase().includes(q));
 
   // date filter
   const df = document.getElementById('filter-date').value;
@@ -1353,7 +1357,7 @@ function renderUserList() {
   if (!users.length) { el.innerHTML = '<div class="empty-state"><span class="material-icons">people</span>ไม่มีข้อมูล</div>'; return; }
   el.innerHTML = users.map(u => `
     <div class="user-row">
-      <img src="${u.avatar||'https://via.placeholder.com/38'}" alt="">
+      <img src="${u.avatar||'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Ccircle cx='22' cy='22' r='22' fill='%23C8E6C9'/%3E%3Ccircle cx='22' cy='17' r='7' fill='%232E7D32'/%3E%3Cellipse cx='22' cy='36' rx='12' ry='8' fill='%232E7D32'/%3E%3C/svg%3E'}" alt="">
       <div class="flex-grow-1">
         <div style="font-weight:600;font-size:.88rem;">${u.name}</div>
         <div style="font-size:.78rem;color:var(--gray-500);">${u.lineUid} • ${u.role==='admin'?'Admin':'User'}</div>
@@ -1396,6 +1400,15 @@ function navigate(page) {
   if (page === 'repair-list') renderRepairTable();
   if (page === 'admin-users') renderUserList();
   if (page === 'admin-vehicles') renderVehicleList();
+  if (page === 'admin-report') { initReportSelectors(); setTimeout(generateReport, 50); }
+
+  // FAB — แสดงเฉพาะหน้า dashboard และ repair-list
+  const fab = document.getElementById('fab-repair');
+  if (fab) {
+    const showFab = ['dashboard','repair-list'].includes(page);
+    fab.style.display = showFab ? 'flex' : 'none';
+  }
+
   // close sidebar on mobile
   if (window.innerWidth < 768) document.getElementById('sidebar').style.display='none';
 }
@@ -1413,7 +1426,7 @@ function openRepairModal() {
   document.getElementById('repair-modal-title').textContent = 'แจ้งซ่อมรถยนต์';
   document.getElementById('repair-form').reset();
   document.getElementById('repair-img-preview').innerHTML = '<span class="material-icons" style="font-size:2rem;color:var(--gray-300);">photo_camera</span><div class="placeholder-text">คลิกเพื่อเลือกรูป (ไม่บังคับ)</div>';
-  if (currentUser.role !== 'admin') document.getElementById('admin-note-section').classList.add('d-none');
+  if (currentUser?.role !== 'admin') document.getElementById('admin-note-section').classList.add('d-none');
   showModal('modalRepair');
 }
 
@@ -1488,6 +1501,8 @@ async function submitRepair() {
   } else {
     showToast('เกิดข้อผิดพลาด: ' + (res.message || ''), 'error');
   }
+  submitting = false;
+  showLoading(false);
 }
 
 /* ============================================================
@@ -2275,11 +2290,11 @@ async function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / หัวหน้า</div>
+          <div class="sign-lbl">ผู้อนุมัติ / หัวหน้างาน</div>
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / เจ้านาย</div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>
