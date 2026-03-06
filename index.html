@@ -779,7 +779,7 @@
           <img src="https://via.placeholder.com/44" id="form-avatar" alt="">
           <div>
             <div class="name" id="form-username">-</div>
-            <div class="line-id" id="form-lineuid">-</div>
+            <div class="line-id" id="dash-dept">-</div>
           </div>
         </div>
 
@@ -1086,17 +1086,7 @@ async function initLiff() {
   }
 }
 
-/* DEV MODE — ลบออกเมื่อใช้งานจริง */
-function devLogin(role = 'admin') {
-  currentUser = {
-    lineUid: role === 'admin' ? 'U_ADMIN_001' : 'U_USER_001',
-    name: role === 'admin' ? 'ผู้ดูแลระบบ' : 'นายสมชาย ใจดี',
-    avatar: 'https://via.placeholder.com/44',
-    role: role,
-    dept: role === 'admin' ? 'ฝ่ายบริหาร' : 'ฝ่ายปฏิบัติการ'
-  };
-  bootApp();
-}
+
 
 /* ============================================================
    BOOT APP
