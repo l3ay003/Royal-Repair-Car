@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระบบแจ้งซ่อมรถยนต์</title>
-<link rel="icon" type="image/png" href="favicon.png">
-<link rel="apple-touch-icon" href="favicon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="favicon.png">
+<link rel="shortcut icon" href="favicon.png">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -481,6 +483,12 @@
         <a class="sidebar-item" data-page="admin-report" onclick="navigate('admin-report')">
           <span class="material-icons">bar_chart</span> รายงานรายเดือน
         </a>
+        <a class="sidebar-item" data-page="admin-yearly" onclick="navigate('admin-yearly')">
+          <span class="material-icons">calendar_today</span> รายงานรายปี
+        </a>
+        <a class="sidebar-item" data-page="vehicle-history" onclick="navigate('vehicle-history')">
+          <span class="material-icons">manage_search</span> ประวัติตามทะเบียน
+        </a>
       </div>
       <div class="sidebar-section-label" style="margin-top:.5rem;">อื่นๆ</div>
       <a class="sidebar-item" onclick="logout()">
@@ -632,6 +640,115 @@
         <!-- Mobile Cards -->
         <div class="d-md-none" id="repair-cards-mobile">
           <div class="empty-state"><span class="material-icons">inbox</span>กำลังโหลด...</div>
+        </div>
+      </div>
+
+
+      <!-- ===== VEHICLE HISTORY PAGE (ข้อ 6) ===== -->
+      <div class="page-section" id="page-vehicle-history">
+        <div class="page-title">
+          <span class="material-icons">manage_search</span> ประวัติซ่อมตามทะเบียน
+        </div>
+        <!-- Search -->
+        <div class="data-table-wrapper p-3 mb-3">
+          <div class="d-flex gap-2 flex-wrap align-items-center">
+            <select class="form-select" id="vh-plate-select" style="max-width:220px;">
+              <option value="">-- เลือกทะเบียนรถ --</option>
+            </select>
+            <button class="btn-repair-header" onclick="loadVehicleHistory()" style="padding:.45rem 1rem;">
+              <span class="material-icons" style="font-size:1rem;">search</span> ค้นหา
+            </button>
+          </div>
+        </div>
+        <!-- Summary -->
+        <div id="vh-summary" style="display:none;" class="mb-3">
+          <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+            <div class="data-table-wrapper p-3 text-center" style="flex:1;min-width:120px;">
+              <div style="font-size:1.5rem;font-weight:700;color:var(--primary);" id="vh-total-jobs">0</div>
+              <div style="font-size:.8rem;color:var(--gray-500);">งานซ่อมทั้งหมด</div>
+            </div>
+            <div class="data-table-wrapper p-3 text-center" style="flex:1;min-width:120px;">
+              <div style="font-size:1.5rem;font-weight:700;color:#1B5E20;" id="vh-done-jobs">0</div>
+              <div style="font-size:.8rem;color:var(--gray-500);">เสร็จสิ้น</div>
+            </div>
+            <div class="data-table-wrapper p-3 text-center" style="flex:1;min-width:120px;">
+              <div style="font-size:1.5rem;font-weight:700;color:var(--accent);" id="vh-total-cost">0</div>
+              <div style="font-size:.8rem;color:var(--gray-500);">ค่าใช้จ่ายรวม (บาท)</div>
+            </div>
+          </div>
+        </div>
+        <!-- History Table -->
+        <div class="data-table-wrapper" id="vh-table-wrap" style="display:none;">
+          <div class="table-responsive d-none d-md-block">
+            <table class="table" id="vh-table">
+              <thead><tr><th>เลขที่งาน</th><th>วันที่</th><th>อาการ</th><th>สถานะ</th><th>ค่าใช้จ่าย</th><th>หมายเหตุ</th></tr></thead>
+              <tbody id="vh-tbody"></tbody>
+            </table>
+          </div>
+          <div class="d-md-none p-2" id="vh-cards"></div>
+        </div>
+        <div class="empty-state" id="vh-empty" style="display:none;">
+          <span class="material-icons">directions_car</span>ไม่พบประวัติการซ่อม
+        </div>
+      </div>
+
+      <!-- ===== STATUS LOG MODAL (ข้อ 5) — เปิดจากปุ่มใน detail ===== -->
+      <!-- ใช้ modal แยก -->
+
+      <!-- ===== YEARLY REPORT PAGE (ข้อ 7) ===== -->
+      <div class="page-section" id="page-admin-yearly">
+        <div class="page-title">
+          <span class="material-icons">calendar_today</span> รายงานสรุปรายปี
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-bottom:1rem;">
+          <select id="yearly-year" class="form-select form-select-sm" style="width:110px;"></select>
+          <button class="btn-repair-header" onclick="generateYearlyReport()" style="padding:.45rem 1rem;font-size:.82rem;">
+            <span class="material-icons" style="font-size:.95rem;">refresh</span> สร้างรายงาน
+          </button>
+        </div>
+        <!-- Summary cards -->
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem;" id="yearly-summary-row"></div>
+        <!-- Monthly chart -->
+        <div class="data-table-wrapper p-3 mb-3">
+          <div style="font-weight:700;font-size:.9rem;margin-bottom:.75rem;">
+            <span class="material-icons" style="font-size:1rem;color:var(--primary);vertical-align:middle;">bar_chart</span> จำนวนงานซ่อมรายเดือน
+          </div>
+          <canvas id="chart-yearly-monthly"></canvas>
+        </div>
+        <!-- Cost chart -->
+        <div class="data-table-wrapper p-3 mb-3">
+          <div style="font-weight:700;font-size:.9rem;margin-bottom:.75rem;">
+            <span class="material-icons" style="font-size:1rem;color:var(--primary);vertical-align:middle;">payments</span> ค่าใช้จ่ายรายเดือน (บาท)
+          </div>
+          <canvas id="chart-yearly-cost"></canvas>
+        </div>
+        <!-- Top plates -->
+        <div class="data-table-wrapper p-3 mb-3">
+          <div style="font-weight:700;font-size:.9rem;margin-bottom:.75rem;">
+            <span class="material-icons" style="font-size:1rem;color:var(--primary);vertical-align:middle;">directions_car</span> รถที่ซ่อมบ่อยที่สุด (Top 10)
+          </div>
+          <div id="yearly-top-plates"></div>
+        </div>
+      </div>
+
+      <!-- ===== STATUS LOG MODAL (ข้อ 5) ===== -->
+      <div class="modal fade" id="modalStatusLog" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header-custom">
+              <div class="modal-title"><span class="material-icons">history</span> ประวัติการเปลี่ยนสถานะ — <span id="log-job-id"></span></div>
+              <button class="btn-close-white" onclick="closeModal('modalStatusLog')"><span class="material-icons" style="font-size:1rem;">close</span></button>
+            </div>
+            <div class="modal-body p-0">
+              <div class="table-responsive d-none d-md-block">
+                <table class="table mb-0">
+                  <thead><tr><th>วันที่</th><th>สถานะเดิม</th><th>สถานะใหม่</th><th>หมายเหตุ</th><th>ผู้เปลี่ยน</th></tr></thead>
+                  <tbody id="status-log-tbody"></tbody>
+                </table>
+              </div>
+              <div class="d-md-none p-2" id="status-log-cards"></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1184,6 +1301,7 @@ async function loadData(silent = false) {
     users    = usersRes.users || [];
 
     populateVehicleSelect();
+  populateVehicleHistorySelect();
     renderStats();
     renderRecentJobs();
     renderRepairTable();
@@ -1394,6 +1512,180 @@ function populateVehicleSelect() {
     vehicles.map(v => `<option value="${v.plate}">${v.plate}${v.model?' ('+v.model+')':''}</option>`).join('');
 }
 
+
+/* ============================================================
+   ข้อ 5 — ประวัติสถานะ
+   ============================================================ */
+async function openStatusLog(jobId) {
+  document.getElementById('log-job-id').textContent = jobId;
+  document.getElementById('status-log-tbody').innerHTML = '<tr><td colspan="5" class="text-center py-3">กำลังโหลด...</td></tr>';
+  document.getElementById('status-log-cards').innerHTML = '<div class="p-3 text-center">กำลังโหลด...</div>';
+  showModal('modalStatusLog');
+  const res = await gasCall('getStatusLog', { jobId });
+  if (res.status !== 'ok') { showToast('โหลดประวัติไม่สำเร็จ', 'error'); return; }
+  const logs = res.logs || [];
+  const statusColor = s => ({'รอดำเนินการ':'#F57F17','อนุมัติ':'#2E7D32','กำลังซ่อม':'#1565C0','เสร็จสิ้น':'#1B5E20','ส่งกลับแก้ไข':'#6A1B9A','ไม่อนุมัติ':'#C62828'})[s] || '#555';
+
+  if (!logs.length) {
+    document.getElementById('status-log-tbody').innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">ยังไม่มีประวัติ</td></tr>';
+    return;
+  }
+  document.getElementById('status-log-tbody').innerHTML = logs.map(l => `
+    <tr>
+      <td style="font-size:.82rem;white-space:nowrap;">${formatDate(l.changedAt)}</td>
+      <td><span style="color:${statusColor(l.oldStatus)};font-weight:600;">${l.oldStatus||'-'}</span></td>
+      <td><span style="color:${statusColor(l.newStatus)};font-weight:600;">→ ${l.newStatus}</span></td>
+      <td style="font-size:.82rem;">${l.note||'-'}</td>
+      <td style="font-size:.82rem;">${l.changedBy||'-'}</td>
+    </tr>`).join('');
+  document.getElementById('status-log-cards').innerHTML = logs.map(l => `
+    <div class="repair-card mb-2">
+      <div style="font-size:.78rem;color:var(--gray-500);">${formatDate(l.changedAt)}</div>
+      <div style="display:flex;gap:.5rem;align-items:center;margin:.25rem 0;">
+        <span style="color:${statusColor(l.oldStatus)};font-weight:600;font-size:.85rem;">${l.oldStatus||'-'}</span>
+        <span class="material-icons" style="font-size:.9rem;color:var(--gray-400);">arrow_forward</span>
+        <span style="color:${statusColor(l.newStatus)};font-weight:600;font-size:.85rem;">${l.newStatus}</span>
+      </div>
+      ${l.note ? `<div style="font-size:.8rem;color:var(--gray-600);">📝 ${l.note}</div>` : ''}
+    </div>`).join('');
+}
+
+/* ============================================================
+   ข้อ 6 — ประวัติตามทะเบียน
+   ============================================================ */
+function populateVehicleHistorySelect() {
+  const sel = document.getElementById('vh-plate-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- เลือกทะเบียนรถ --</option>' +
+    vehicles.map(v => `<option value="${v.plate}">${v.plate}${v.model?' ('+v.model+')':''}</option>`).join('');
+}
+
+async function loadVehicleHistory() {
+  const plate = document.getElementById('vh-plate-select').value;
+  if (!plate) { showToast('กรุณาเลือกทะเบียนรถ', 'error'); return; }
+  showLoading(true);
+  const res = await gasCall('getVehicleHistory', { plate });
+  showLoading(false);
+  if (res.status !== 'ok') { showToast('โหลดประวัติไม่สำเร็จ', 'error'); return; }
+
+  const { jobs, totalCost, doneCount } = res;
+  document.getElementById('vh-summary').style.display = 'block';
+  document.getElementById('vh-total-jobs').textContent = jobs.length;
+  document.getElementById('vh-done-jobs').textContent = doneCount;
+  document.getElementById('vh-total-cost').textContent = Number(totalCost).toLocaleString();
+
+  if (!jobs.length) {
+    document.getElementById('vh-table-wrap').style.display = 'none';
+    document.getElementById('vh-empty').style.display = 'flex';
+    return;
+  }
+  document.getElementById('vh-empty').style.display = 'none';
+  document.getElementById('vh-table-wrap').style.display = 'block';
+
+  document.getElementById('vh-tbody').innerHTML = jobs.map(j => `
+    <tr>
+      <td style="font-weight:600;color:var(--primary);">${j.jobId}</td>
+      <td style="font-size:.82rem;">${formatDate(j.createdAt)}</td>
+      <td style="font-size:.82rem;max-width:200px;">${(j.detail||'').substring(0,60)}${(j.detail||'').length>60?'...':''}</td>
+      <td><span class="badge-status ${statusClass(j.status)}">${j.status}</span></td>
+      <td>${j.actualCost ? Number(j.actualCost).toLocaleString()+' ฿' : '-'}</td>
+      <td style="font-size:.82rem;">${j.note||'-'}</td>
+    </tr>`).join('');
+
+  document.getElementById('vh-cards').innerHTML = jobs.map(j => `
+    <div class="repair-card mb-2" onclick="openDetail('${j.jobId}')">
+      <div class="d-flex justify-content-between"><span class="job-id">${j.jobId}</span><span class="badge-status ${statusClass(j.status)}">${j.status}</span></div>
+      <div style="font-size:.82rem;color:var(--gray-500);">${formatDate(j.createdAt)}</div>
+      <div style="font-size:.83rem;">${(j.detail||'').substring(0,60)}${(j.detail||'').length>60?'...':''}</div>
+      ${j.actualCost ? `<div style="font-size:.82rem;color:var(--accent);font-weight:600;">💰 ${Number(j.actualCost).toLocaleString()} บาท</div>` : ''}
+    </div>`).join('');
+}
+
+/* ============================================================
+   ข้อ 7 — รายงานรายปี
+   ============================================================ */
+let _chartYearlyMonth = null;
+let _chartYearlyCost  = null;
+
+function initYearlySelectors() {
+  const sel = document.getElementById('yearly-year');
+  if (!sel || sel.options.length > 1) return;
+  const yr = new Date().getFullYear();
+  for (let y = yr; y >= yr - 4; y--) {
+    const o = document.createElement('option');
+    o.value = y; o.textContent = (y + 543) + ' (พ.ศ.)';
+    if (y === yr) o.selected = true;
+    sel.appendChild(o);
+  }
+}
+
+async function generateYearlyReport() {
+  const year = parseInt(document.getElementById('yearly-year').value);
+  showLoading(true);
+  const res = await gasCall('getYearlyReport', { year });
+  showLoading(false);
+  if (res.status !== 'ok') { showToast('โหลดรายงานไม่สำเร็จ', 'error'); return; }
+
+  const { totalJobs, totalDone, totalCost, monthly, topPlates } = res;
+  const MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+  // Summary cards
+  const summaryData = [
+    { icon:'build_circle', label:'งานซ่อมทั้งหมด', val:totalJobs, color:'#1565C0', bg:'#E3F2FD' },
+    { icon:'check_circle', label:'เสร็จสิ้น', val:totalDone, color:'#2E7D32', bg:'#E8F5E9' },
+    { icon:'payments', label:'ค่าใช้จ่ายรวม (บาท)', val:Number(totalCost).toLocaleString(), color:'#E65100', bg:'#FFF3E0' },
+    { icon:'percent', label:'อัตราเสร็จสิ้น', val:(totalJobs ? Math.round(totalDone/totalJobs*100) : 0)+'%', color:'#6A1B9A', bg:'#F3E5F5' },
+  ];
+  document.getElementById('yearly-summary-row').innerHTML = summaryData.map(s => `
+    <div class="report-summary-card" style="background:${s.bg};border-color:${s.color}20;flex:1;min-width:130px;">
+      <span class="material-icons" style="color:${s.color};">${s.icon}</span>
+      <div style="font-size:1.4rem;font-weight:700;color:${s.color};">${s.val}</div>
+      <div style="font-size:.78rem;color:var(--gray-600);">${s.label}</div>
+    </div>`).join('');
+
+  // Monthly jobs chart
+  if (_chartYearlyMonth) _chartYearlyMonth.destroy();
+  _chartYearlyMonth = new Chart(document.getElementById('chart-yearly-monthly'), {
+    type: 'bar',
+    data: {
+      labels: MONTHS,
+      datasets: [
+        { label:'งานทั้งหมด', data: monthly.map(m=>m.total), backgroundColor:'rgba(21,101,192,.7)', borderRadius:4 },
+        { label:'เสร็จสิ้น',  data: monthly.map(m=>m.done),  backgroundColor:'rgba(46,125,50,.7)',  borderRadius:4 },
+      ]
+    },
+    options: { responsive:true, plugins:{ legend:{ position:'top' } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
+  });
+
+  // Monthly cost chart
+  if (_chartYearlyCost) _chartYearlyCost.destroy();
+  _chartYearlyCost = new Chart(document.getElementById('chart-yearly-cost'), {
+    type: 'line',
+    data: {
+      labels: MONTHS,
+      datasets: [{ label:'ค่าใช้จ่าย (บาท)', data: monthly.map(m=>m.cost),
+        borderColor:'#E65100', backgroundColor:'rgba(230,81,0,.1)',
+        fill:true, tension:.4, pointRadius:4 }]
+    },
+    options: { responsive:true, plugins:{ legend:{ position:'top' } }, scales:{ y:{ beginAtZero:true } } }
+  });
+
+  // Top plates
+  const maxCount = topPlates[0]?.count || 1;
+  document.getElementById('yearly-top-plates').innerHTML = topPlates.length
+    ? topPlates.map((p,i) => `
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem;">
+        <div style="width:24px;font-weight:700;color:var(--gray-500);font-size:.85rem;">${i+1}</div>
+        <div style="font-weight:600;min-width:100px;font-size:.88rem;">${p.plate}</div>
+        <div style="flex:1;background:var(--gray-100);border-radius:4px;overflow:hidden;">
+          <div style="width:${Math.round(p.count/maxCount*100)}%;background:var(--primary);height:20px;border-radius:4px;"></div>
+        </div>
+        <div style="min-width:60px;font-size:.82rem;color:var(--gray-600);">${p.count} ครั้ง</div>
+        <div style="min-width:80px;font-size:.82rem;color:var(--accent);font-weight:600;">${Number(p.cost).toLocaleString()} ฿</div>
+      </div>`).join('')
+    : '<div class="empty-state"><span class="material-icons">directions_car</span>ไม่มีข้อมูล</div>';
+}
+
 /* ============================================================
    NAVIGATION
    ============================================================ */
@@ -1407,7 +1699,9 @@ function navigate(page) {
   if (page === 'repair-list') renderRepairTable();
   if (page === 'admin-users') renderUserList();
   if (page === 'admin-vehicles') renderVehicleList();
-  if (page === 'admin-report') { initReportSelectors(); setTimeout(generateReport, 50); }
+  if (page === 'admin-report')   { initReportSelectors(); setTimeout(generateReport, 50); }
+  if (page === 'admin-yearly')   { initYearlySelectors(); }
+  if (page === 'vehicle-history') { populateVehicleHistorySelect(); }
 
   // FAB — แสดงเฉพาะหน้า dashboard และ repair-list
   const fab = document.getElementById('fab-repair');
@@ -1544,10 +1838,11 @@ function openDetail(jobId) {
   const pdfBtn = `<button class="btn-outline-custom btn-sm" onclick="printJobPDF('${j.jobId}')"><span class="material-icons" style="font-size:.9rem;">picture_as_pdf</span> PDF</button>`;
 
   if (isAdmin) {
+    const logBtn = `<button class="btn-outline-custom btn-sm" onclick="openStatusLog('${j.jobId}')"><span class="material-icons" style="font-size:.9rem;">history</span> ประวัติ</button>`;
     if (j.status === 'เสร็จสิ้น') {
-      footer.innerHTML = pdfBtn; // เสร็จสิ้น — แสดงแค่ PDF
+      footer.innerHTML = pdfBtn + logBtn;
     } else {
-      footer.innerHTML = pdfBtn + `
+      footer.innerHTML = pdfBtn + logBtn + `
         <button class="btn-outline-custom btn-sm" onclick="closeModal('modalDetail');openEditRepair('${j.jobId}')"><span class="material-icons" style="font-size:.9rem;">edit</span> แก้ไข</button>
         <button class="btn-primary-custom btn-sm" onclick="closeModal('modalDetail');openStatusModal('${j.jobId}')"><span class="material-icons" style="font-size:.9rem;">update</span> เปลี่ยนสถานะ</button>`;
     }
@@ -2310,7 +2605,7 @@ async function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / เจ้านาย</div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>
