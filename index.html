@@ -136,13 +136,25 @@
     .report-grid-2 { grid-template-columns: 1fr; }
     .report-grid   { grid-template-columns: 1fr !important; }
   }
-  .report-summary-card {
-    background:#fff; border-radius:var(--radius); padding:1rem 1.25rem;
-    border:1px solid var(--gray-200); box-shadow:var(--shadow-sm);
-    flex:1; min-width:130px; text-align:center;
+  .report-summary-grid {
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap:.75rem;
+    margin-bottom:1rem;
   }
-  .report-summary-card .rs-val { font-size:1.8rem; font-weight:700; font-family:'Prompt',sans-serif; line-height:1; }
-  .report-summary-card .rs-lbl { font-size:.78rem; color:var(--gray-500); margin-top:.25rem; }
+  @media (max-width:768px) {
+    .report-summary-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width:400px) {
+    .report-summary-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  .report-summary-card {
+    background:#fff; border-radius:var(--radius); padding:1rem .75rem;
+    border:1px solid var(--gray-200); box-shadow:var(--shadow-sm);
+    text-align:center; min-width:0;
+  }
+  .report-summary-card .rs-val { font-size:1.6rem; font-weight:700; font-family:'Prompt',sans-serif; line-height:1; }
+  .report-summary-card .rs-lbl { font-size:.75rem; color:var(--gray-500); margin-top:.25rem; }
   .report-bar-wrap { display:flex; align-items:center; gap:.6rem; margin-bottom:.4rem; font-size:.82rem; }
   .report-bar { height:10px; border-radius:20px; background:var(--primary); transition:.4s; min-width:4px; }
   @media (max-width:640px) { .report-grid { grid-template-columns:1fr !important; } }
@@ -705,6 +717,12 @@
           <button class="btn-repair-header" onclick="generateYearlyReport()" style="padding:.45rem 1rem;font-size:.82rem;">
             <span class="material-icons" style="font-size:.95rem;">refresh</span> สร้างรายงาน
           </button>
+          <button class="btn-outline-custom btn-sm" onclick="exportYearlyCSV()" style="flex-shrink:0;font-size:.82rem;">
+            <span class="material-icons" style="font-size:.85rem;">download</span> CSV
+          </button>
+          <button class="btn-outline-custom btn-sm" onclick="printYearlyReport()" style="flex-shrink:0;font-size:.82rem;">
+            <span class="material-icons" style="font-size:.85rem;">picture_as_pdf</span> PDF
+          </button>
         </div>
         <!-- Summary cards -->
         <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem;" id="yearly-summary-row"></div>
@@ -731,27 +749,6 @@
         </div>
       </div>
 
-      <!-- ===== STATUS LOG MODAL (ข้อ 5) ===== -->
-      <div class="modal fade" id="modalStatusLog" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-          <div class="modal-content">
-            <div class="modal-header-custom">
-              <div class="modal-title"><span class="material-icons">history</span> ประวัติการเปลี่ยนสถานะ — <span id="log-job-id"></span></div>
-              <button class="btn-close-white" onclick="closeModal('modalStatusLog')"><span class="material-icons" style="font-size:1rem;">close</span></button>
-            </div>
-            <div class="modal-body p-0">
-              <div class="table-responsive d-none d-md-block">
-                <table class="table mb-0">
-                  <thead><tr><th>วันที่</th><th>สถานะเดิม</th><th>สถานะใหม่</th><th>หมายเหตุ</th><th>ผู้เปลี่ยน</th></tr></thead>
-                  <tbody id="status-log-tbody"></tbody>
-                </table>
-              </div>
-              <div class="d-md-none p-2" id="status-log-cards"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- ===== ADMIN MONTHLY REPORT PAGE ===== -->
       <div class="page-section" id="page-admin-report">
         <!-- Title -->
@@ -775,9 +772,8 @@
         </div>
 
         <!-- Summary Cards -->
-        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:1rem;padding-bottom:.25rem;">
-          <div id="report-summary-row" style="display:flex;gap:.75rem;flex-wrap:nowrap;min-width:max-content;"></div>
-        </div>
+        <div id="report-month-label" style="font-family:'Prompt',sans-serif;font-size:.82rem;color:var(--gray-500);margin-bottom:.5rem;"></div>
+        <div id="report-summary-row" class="report-summary-grid"></div>
 
         <!-- Charts row — 2 col desktop, 1 col mobile -->
         <div class="report-grid-2 mb-3">
@@ -1625,11 +1621,14 @@ async function generateYearlyReport() {
   const res = await gasCall('getYearlyReport', { year });
   showLoading(false);
   if (res.status !== 'ok') { showToast('โหลดรายงานไม่สำเร็จ', 'error'); return; }
+  _yearlyReportData = res;
+  renderYearlyReport(res);
+}
 
+function renderYearlyReport(res) {
   const { totalJobs, totalDone, totalCost, monthly, topPlates } = res;
   const MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
-  // Summary cards
   const summaryData = [
     { icon:'build_circle', label:'งานซ่อมทั้งหมด', val:totalJobs, color:'#1565C0', bg:'#E3F2FD' },
     { icon:'check_circle', label:'เสร็จสิ้น', val:totalDone, color:'#2E7D32', bg:'#E8F5E9' },
@@ -1643,7 +1642,6 @@ async function generateYearlyReport() {
       <div style="font-size:.78rem;color:var(--gray-600);">${s.label}</div>
     </div>`).join('');
 
-  // Monthly jobs chart
   if (_chartYearlyMonth) _chartYearlyMonth.destroy();
   _chartYearlyMonth = new Chart(document.getElementById('chart-yearly-monthly'), {
     type: 'bar',
@@ -1657,7 +1655,6 @@ async function generateYearlyReport() {
     options: { responsive:true, plugins:{ legend:{ position:'top' } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
   });
 
-  // Monthly cost chart
   if (_chartYearlyCost) _chartYearlyCost.destroy();
   _chartYearlyCost = new Chart(document.getElementById('chart-yearly-cost'), {
     type: 'line',
@@ -1670,7 +1667,6 @@ async function generateYearlyReport() {
     options: { responsive:true, plugins:{ legend:{ position:'top' } }, scales:{ y:{ beginAtZero:true } } }
   });
 
-  // Top plates
   const maxCount = topPlates[0]?.count || 1;
   document.getElementById('yearly-top-plates').innerHTML = topPlates.length
     ? topPlates.map((p,i) => `
@@ -1684,6 +1680,119 @@ async function generateYearlyReport() {
         <div style="min-width:80px;font-size:.82rem;color:var(--accent);font-weight:600;">${Number(p.cost).toLocaleString()} ฿</div>
       </div>`).join('')
     : '<div class="empty-state"><span class="material-icons">directions_car</span>ไม่มีข้อมูล</div>';
+}
+
+/* ============================================================
+   ข้อ 7 — Export Yearly CSV และ PDF
+   ============================================================ */
+let _yearlyReportData = null; // เก็บข้อมูลล่าสุดที่ generate
+
+
+function exportYearlyCSV() {
+  if (!_yearlyReportData) { showToast('กรุณาสร้างรายงานก่อน', 'error'); return; }
+  const { year, monthly, topPlates, totalJobs, totalDone, totalCost } = _yearlyReportData;
+  const MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const BOM = '﻿';
+  const esc = v => '"' + String(v||'').replace(/"/g,'""') + '"';
+
+  let csv = BOM + `รายงานสรุปรายปี ${year+543}
+
+`;
+  csv += `ภาพรวมทั้งปี
+`;
+  csv += `งานทั้งหมด,${totalJobs}
+เสร็จสิ้น,${totalDone}
+ค่าใช้จ่ายรวม,${totalCost}
+
+`;
+  csv += `สรุปรายเดือน
+`;
+  csv += `เดือน,งานทั้งหมด,เสร็จสิ้น,ค่าใช้จ่าย
+`;
+  monthly.forEach((m,i) => { csv += `${MONTHS[i]},${m.total},${m.done},${m.cost}
+`; });
+  csv += `
+รถที่ซ่อมบ่อย
+`;
+  csv += `อันดับ,ทะเบียน,จำนวนครั้ง,ค่าใช้จ่ายรวม
+`;
+  topPlates.forEach((p,i) => { csv += `${i+1},${esc(p.plate)},${p.count},${p.cost}
+`; });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `รายงานรายปี_${year+543}.csv`;
+  a.click();
+  showToast('ดาวน์โหลด CSV สำเร็จ ✅');
+}
+
+async function printYearlyReport() {
+  if (!_yearlyReportData) { showToast('กรุณาสร้างรายงานก่อน', 'error'); return; }
+  const { year, monthly, topPlates, totalJobs, totalDone, totalCost } = _yearlyReportData;
+  const MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const printDate = new Date().toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
+
+  const monthRows = monthly.map((m,i) => `
+    <tr>
+      <td>${MONTHS[i]}</td>
+      <td style="text-align:center;">${m.total}</td>
+      <td style="text-align:center;">${m.done}</td>
+      <td style="text-align:right;">${Number(m.cost).toLocaleString()} ฿</td>
+    </tr>`).join('');
+
+  const plateRows = topPlates.map((p,i) => `
+    <tr>
+      <td style="text-align:center;">${i+1}</td>
+      <td>${p.plate}</td>
+      <td style="text-align:center;">${p.count}</td>
+      <td style="text-align:right;">${Number(p.cost).toLocaleString()} ฿</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">
+  <style>
+    body { font-family: 'Sarabun', sans-serif; font-size: 13px; color: #222; margin: 20px; }
+    h2 { color: #2E7D32; text-align: center; margin-bottom: 4px; }
+    .subtitle { text-align:center; color:#555; margin-bottom:16px; font-size:12px; }
+    .summary { display:flex; gap:12px; margin-bottom:16px; }
+    .summary-card { flex:1; border:1px solid #e0e0e0; border-radius:8px; padding:10px; text-align:center; }
+    .summary-card .val { font-size:1.4rem; font-weight:700; color:#2E7D32; }
+    .summary-card .lbl { font-size:11px; color:#666; }
+    table { width:100%; border-collapse:collapse; margin-bottom:16px; }
+    th { background:#2E7D32; color:#fff; padding:6px 10px; font-size:12px; }
+    td { padding:5px 10px; border-bottom:1px solid #eee; }
+    tr:nth-child(even) td { background:#f9f9f9; }
+    h3 { color:#1B5E20; font-size:13px; margin:12px 0 6px; border-left:4px solid #2E7D32; padding-left:8px; }
+    .ft { display:flex; justify-content:space-between; font-size:11px; color:#888; margin-top:16px; }
+  </style></head><body>
+  <h2>รายงานสรุปรายปี พ.ศ. ${year+543}</h2>
+  <div class="subtitle">พิมพ์: ${printDate}</div>
+  <div class="summary">
+    <div class="summary-card"><div class="val">${totalJobs}</div><div class="lbl">งานทั้งหมด</div></div>
+    <div class="summary-card"><div class="val">${totalDone}</div><div class="lbl">เสร็จสิ้น</div></div>
+    <div class="summary-card"><div class="val">${totalJobs ? Math.round(totalDone/totalJobs*100) : 0}%</div><div class="lbl">อัตราเสร็จ</div></div>
+    <div class="summary-card"><div class="val" style="font-size:1rem;">${Number(totalCost).toLocaleString()}</div><div class="lbl">ค่าใช้จ่ายรวม (฿)</div></div>
+  </div>
+  <h3>สรุปรายเดือน</h3>
+  <table><thead><tr><th>เดือน</th><th>งานทั้งหมด</th><th>เสร็จสิ้น</th><th>ค่าใช้จ่าย</th></tr></thead>
+  <tbody>${monthRows}</tbody></table>
+  <h3>รถที่ซ่อมบ่อยที่สุด (Top 10)</h3>
+  <table><thead><tr><th>อันดับ</th><th>ทะเบียน</th><th>จำนวนครั้ง</th><th>ค่าใช้จ่ายรวม</th></tr></thead>
+  <tbody>${plateRows}</tbody></table>
+  <div class="ft"><span>รายงานรายปี ${year+543} | ระบบแจ้งซ่อมรถยนต์</span><span>${printDate}</span></div>
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`;
+
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isMobile) {
+    showToast('กำลังสร้าง PDF... รอสักครู่');
+    await savePDF(html, `รายงานรายปี_${year+543}.pdf`);
+  } else {
+    const win = window.open('','_blank');
+    if (!win) { showToast('กรุณาอนุญาต Popup', 'error'); return; }
+    win.document.write(html);
+    win.document.close();
+  }
 }
 
 /* ============================================================
@@ -2601,11 +2710,11 @@ async function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / หัวหน้า</div>
+          <div class="sign-lbl">ผู้อนุมัติ / หัวหน้างาน</div>
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / เจ้านาย</div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>
@@ -2620,6 +2729,27 @@ async function printJobPDF(jobId) {
 
 </div>
 <script>window.onload=function(){window.print();}<\/script>
+<!-- ===== STATUS LOG MODAL (ข้อ 5) ===== -->
+<div class="modal fade" id="modalStatusLog" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header-custom">
+        <div class="modal-title"><span class="material-icons">history</span> ประวัติการเปลี่ยนสถานะ — <span id="log-job-id"></span></div>
+        <button class="btn-close-white" onclick="closeModal('modalStatusLog')"><span class="material-icons" style="font-size:1rem;">close</span></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="table-responsive d-none d-md-block">
+          <table class="table mb-0">
+            <thead><tr><th>วันที่</th><th>สถานะเดิม</th><th>สถานะใหม่</th><th>หมายเหตุ</th><th>ผู้เปลี่ยน</th></tr></thead>
+            <tbody id="status-log-tbody"></tbody>
+          </table>
+        </div>
+        <div class="d-md-none p-2" id="status-log-cards"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>`;
 
@@ -2723,12 +2853,13 @@ function generateReport() {
   ];
 
   const monthLabel = monthName + ' ' + (year+543);
-  document.getElementById('report-summary-row').innerHTML = `
-    <div style="width:100%;font-family:'Prompt',sans-serif;font-size:.82rem;color:var(--gray-500);margin-bottom:.25rem;">
-      📅 สรุปประจำเดือน <strong style="color:var(--primary-dark);">${monthLabel}</strong>
-      ${jobs.length===0 ? '<span style="margin-left:.5rem;color:var(--danger);font-size:.78rem;">⚠️ ไม่มีข้อมูลในเดือนนี้</span>' : ''}
-    </div>` +
-    summaryCards.map(s => `
+  // label บรรทัดเดือน (วางก่อน grid)
+  const reportLabelEl = document.getElementById('report-month-label');
+  if (reportLabelEl) {
+    reportLabelEl.innerHTML = `📅 สรุปประจำเดือน <strong style="color:var(--primary-dark);">${monthLabel}</strong>
+      ${jobs.length===0 ? '<span style="margin-left:.5rem;color:var(--danger);font-size:.78rem;">⚠️ ไม่มีข้อมูลในเดือนนี้</span>' : ''}`;
+  }
+  document.getElementById('report-summary-row').innerHTML = summaryCards.map(s => `
     <div class="report-summary-card">
       <div style="width:40px;height:40px;background:${s.bg};border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .5rem;">
         <span class="material-icons" style="color:${s.c};font-size:1.3rem;">${s.icon}</span>
@@ -3027,6 +3158,27 @@ document.getElementById('filter-date').addEventListener('change', () => { curren
     <span class="fab-icon"><span class="material-icons">build</span></span>
     <span class="fab-label">แจ้งซ่อมรถยนต์</span>
   </button>
+
+<!-- ===== STATUS LOG MODAL (ข้อ 5) ===== -->
+<div class="modal fade" id="modalStatusLog" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header-custom">
+        <div class="modal-title"><span class="material-icons">history</span> ประวัติการเปลี่ยนสถานะ — <span id="log-job-id"></span></div>
+        <button class="btn-close-white" onclick="closeModal('modalStatusLog')"><span class="material-icons" style="font-size:1rem;">close</span></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="table-responsive d-none d-md-block">
+          <table class="table mb-0">
+            <thead><tr><th>วันที่</th><th>สถานะเดิม</th><th>สถานะใหม่</th><th>หมายเหตุ</th><th>ผู้เปลี่ยน</th></tr></thead>
+            <tbody id="status-log-tbody"></tbody>
+          </table>
+        </div>
+        <div class="d-md-none p-2" id="status-log-cards"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
