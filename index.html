@@ -158,6 +158,9 @@
   .report-bar-wrap { display:flex; align-items:center; gap:.6rem; margin-bottom:.4rem; font-size:.82rem; }
   .report-bar { height:10px; border-radius:20px; background:var(--primary); transition:.4s; min-width:4px; }
   @media (max-width:640px) { .report-grid { grid-template-columns:1fr !important; } }
+  @media (max-width:640px) {
+    #page-admin-qr > div:first-of-type { grid-template-columns:1fr !important; }
+  }
 
   /* ======= TABLE ======= */
   .data-table-wrapper { background:#fff; border-radius:var(--radius); box-shadow:var(--shadow-sm); border:1px solid var(--gray-200); overflow:hidden; }
@@ -498,6 +501,9 @@
         <a class="sidebar-item" data-page="admin-yearly" onclick="navigate('admin-yearly')">
           <span class="material-icons">calendar_today</span> รายงานรายปี
         </a>
+        <a class="sidebar-item" data-page="admin-qr" onclick="navigate('admin-qr')">
+          <span class="material-icons">qr_code_2</span> QR Code แจ้งซ่อม
+        </a>
         <a class="sidebar-item" data-page="vehicle-history" onclick="navigate('vehicle-history')">
           <span class="material-icons">manage_search</span> ประวัติตามทะเบียน
         </a>
@@ -746,6 +752,70 @@
             <span class="material-icons" style="font-size:1rem;color:var(--primary);vertical-align:middle;">directions_car</span> รถที่ซ่อมบ่อยที่สุด (Top 10)
           </div>
           <div id="yearly-top-plates"></div>
+        </div>
+      </div>
+
+      <!-- ===== QR CODE PAGE ===== -->
+      <div class="page-section" id="page-admin-qr">
+        <div class="page-title">
+          <span class="material-icons">qr_code_2</span> QR Code แจ้งซ่อม
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;max-width:860px;">
+
+          <!-- QR Card -->
+          <div class="data-table-wrapper p-4 text-center" style="display:flex;flex-direction:column;align-items:center;gap:.75rem;">
+            <div style="font-weight:700;font-size:1rem;color:var(--primary-dark);">
+              <span class="material-icons" style="vertical-align:middle;font-size:1.1rem;">qr_code</span>
+              QR สแกนแจ้งซ่อม
+            </div>
+            <!-- QR จะถูก generate ตรงนี้ -->
+            <div id="qr-canvas-wrap" style="padding:16px;background:#fff;border-radius:12px;border:2px solid var(--gray-200);box-shadow:var(--shadow-sm);">
+              <canvas id="qr-canvas"></canvas>
+            </div>
+            <div style="font-size:.8rem;color:var(--gray-500);max-width:220px;text-align:center;">
+              สแกน QR นี้เพื่อเปิดหน้าแจ้งซ่อมได้ทันที
+            </div>
+            <!-- ปุ่ม -->
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center;">
+              <button class="btn-repair-header" onclick="downloadQR()" style="padding:.45rem 1rem;font-size:.82rem;">
+                <span class="material-icons" style="font-size:.95rem;">download</span> บันทึก PNG
+              </button>
+              <button class="btn-outline-custom btn-sm" onclick="printQR()" style="font-size:.82rem;">
+                <span class="material-icons" style="font-size:.9rem;">print</span> พิมพ์
+              </button>
+            </div>
+          </div>
+
+          <!-- Preview Card -->
+          <div class="data-table-wrapper p-4" style="display:flex;flex-direction:column;gap:.75rem;">
+            <div style="font-weight:700;font-size:1rem;color:var(--primary-dark);">
+              <span class="material-icons" style="vertical-align:middle;font-size:1.1rem;">preview</span>
+              ตัวอย่างโปสเตอร์สำหรับติดที่รถ/จุดรับแจ้ง
+            </div>
+            <!-- Poster Preview -->
+            <div id="qr-poster" style="background:linear-gradient(135deg,#1B5E20,#2E7D32);border-radius:12px;padding:24px 20px;text-align:center;color:#fff;display:flex;flex-direction:column;align-items:center;gap:12px;">
+              <div style="font-size:1.3rem;font-weight:700;font-family:'Prompt',sans-serif;letter-spacing:.5px;">🔧 แจ้งซ่อมรถยนต์</div>
+              <div style="background:#fff;padding:12px;border-radius:10px;">
+                <canvas id="qr-poster-canvas"></canvas>
+              </div>
+              <div style="font-size:.85rem;opacity:.9;">สแกน QR Code เพื่อแจ้งซ่อม</div>
+              <div style="font-size:.75rem;opacity:.7;word-break:break-all;" id="qr-url-label"></div>
+            </div>
+            <button class="btn-outline-custom btn-sm" onclick="printPoster()" style="font-size:.82rem;align-self:center;">
+              <span class="material-icons" style="font-size:.9rem;">print</span> พิมพ์โปสเตอร์
+            </button>
+          </div>
+
+        </div>
+
+        <!-- URL Info -->
+        <div class="data-table-wrapper p-3 mt-3" style="max-width:860px;">
+          <div style="font-size:.82rem;color:var(--gray-600);">
+            <span class="material-icons" style="font-size:.9rem;vertical-align:middle;color:var(--primary);">link</span>
+            <strong>URL ที่ QR ชี้ไป:</strong>
+            <span id="qr-url-display" style="word-break:break-all;margin-left:.25rem;"></span>
+          </div>
         </div>
       </div>
 
@@ -1121,6 +1191,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
 <script>
@@ -1816,6 +1887,121 @@ async function printYearlyReport() {
 }
 
 /* ============================================================
+   QR CODE
+   ============================================================ */
+let _qrInstance       = null;
+let _qrPosterInstance = null;
+
+function initQRCode() {
+  const url = window.location.href.split('?')[0]; // URL หน้าเว็บ
+
+  document.getElementById('qr-url-display').textContent = url;
+  document.getElementById('qr-url-label').textContent   = url;
+
+  // ล้าง instance เก่า
+  const wrap       = document.getElementById('qr-canvas-wrap');
+  const posterWrap = document.getElementById('qr-poster-canvas').parentElement;
+
+  // ลบ canvas เก่า แล้วสร้างใหม่
+  document.getElementById('qr-canvas').remove();
+  document.getElementById('qr-poster-canvas').remove();
+
+  const canvas1 = document.createElement('canvas'); canvas1.id = 'qr-canvas';
+  const canvas2 = document.createElement('canvas'); canvas2.id = 'qr-poster-canvas';
+  wrap.appendChild(canvas1);
+  posterWrap.appendChild(canvas2);
+
+  const opts = { text: url, correctLevel: QRCode.CorrectLevel.M };
+  new QRCode(canvas1, { ...opts, width: 220, height: 220 });
+  new QRCode(canvas2, { ...opts, width: 160, height: 160 });
+}
+
+function downloadQR() {
+  // รอให้ QR render เสร็จ
+  setTimeout(() => {
+    const canvas = document.querySelector('#qr-canvas-wrap canvas');
+    if (!canvas) { showToast('ยังไม่มี QR Code', 'error'); return; }
+    const link = document.createElement('a');
+    link.download = 'QR_แจ้งซ่อม.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('บันทึก QR Code แล้ว ✅');
+  }, 300);
+}
+
+function printQR() {
+  setTimeout(() => {
+    const canvas = document.querySelector('#qr-canvas-wrap canvas');
+    if (!canvas) { showToast('ยังไม่มี QR Code', 'error'); return; }
+    const url  = document.getElementById('qr-url-display').textContent;
+    const imgData = canvas.toDataURL('image/png');
+    const win  = window.open('', '_blank', 'width=400,height=500');
+    win.document.write(`<!DOCTYPE html><html><head><title>QR แจ้งซ่อม</title>
+      <style>
+        body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f5;}
+        .card{background:#fff;border-radius:16px;padding:32px 24px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.1);max-width:320px;}
+        h2{color:#1B5E20;font-family:sans-serif;margin:0 0 16px;}
+        img{width:220px;height:220px;border:2px solid #eee;border-radius:8px;padding:8px;}
+        p{font-size:12px;color:#666;margin-top:12px;word-break:break-all;}
+      </style></head><body>
+      <div class="card">
+        <h2>🔧 แจ้งซ่อมรถยนต์</h2>
+        <img src="${imgData}">
+        <p>สแกน QR Code เพื่อแจ้งซ่อม</p>
+        <p style="font-size:10px;color:#999;">${url}</p>
+      </div>
+      <script>window.onload=function(){window.print();}<\/script>
+      </body></html>`);
+    win.document.close();
+  }, 300);
+}
+
+function printPoster() {
+  setTimeout(() => {
+    const canvas = document.querySelector('#qr-poster-canvas');
+    if (!canvas) { showToast('ยังไม่มี QR Code', 'error'); return; }
+    const url     = document.getElementById('qr-url-display').textContent;
+    const imgData = canvas.toDataURL('image/png');
+    const win     = window.open('', '_blank', 'width=500,height=700');
+    win.document.write(`<!DOCTYPE html><html><head><title>โปสเตอร์แจ้งซ่อม</title>
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&display=swap');
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f0f0f0;}
+        .poster{background:linear-gradient(160deg,#1B5E20 0%,#2E7D32 60%,#388E3C 100%);
+          border-radius:20px;padding:40px 32px;text-align:center;color:#fff;
+          font-family:'Prompt',sans-serif;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.25);}
+        .logo{font-size:2.5rem;margin-bottom:8px;}
+        h1{font-size:1.5rem;font-weight:700;margin-bottom:4px;letter-spacing:.5px;}
+        .sub{font-size:.9rem;opacity:.85;margin-bottom:20px;}
+        .qr-box{background:#fff;border-radius:14px;padding:16px;display:inline-block;margin-bottom:16px;}
+        .qr-box img{width:200px;height:200px;display:block;}
+        .cta{font-size:1rem;font-weight:600;margin-bottom:8px;}
+        .url{font-size:.6rem;opacity:.6;word-break:break-all;margin-top:8px;}
+        .steps{background:rgba(255,255,255,.15);border-radius:10px;padding:12px 16px;margin-top:16px;text-align:left;}
+        .steps p{font-size:.78rem;margin-bottom:4px;opacity:.9;}
+        .steps p:last-child{margin-bottom:0;}
+      </style></head><body>
+      <div class="poster">
+        <div class="logo">🔧</div>
+        <h1>แจ้งซ่อมรถยนต์</h1>
+        <div class="sub">ระบบแจ้งซ่อม Royal-D</div>
+        <div class="qr-box"><img src="${imgData}"></div>
+        <div class="cta">📱 สแกน QR Code เพื่อแจ้งซ่อม</div>
+        <div class="steps">
+          <p>1️⃣  เปิดกล้องมือถือ / LINE</p>
+          <p>2️⃣  ส่อง QR Code</p>
+          <p>3️⃣  กรอกข้อมูลแจ้งซ่อม</p>
+        </div>
+        <div class="url">${url}</div>
+      </div>
+      <script>window.onload=function(){window.print();}<\/script>
+      </body></html>`);
+    win.document.close();
+  }, 300);
+}
+
+/* ============================================================
    NAVIGATION
    ============================================================ */
 function navigate(page) {
@@ -1830,6 +2016,7 @@ function navigate(page) {
   if (page === 'admin-vehicles') renderVehicleList();
   if (page === 'admin-report')   { initReportSelectors(); setTimeout(generateReport, 50); }
   if (page === 'admin-yearly')   { initYearlySelectors(); }
+  if (page === 'admin-qr')       { setTimeout(initQRCode, 100); }
   if (page === 'vehicle-history') { populateVehicleHistorySelect(); }
 
   // FAB — แสดงเฉพาะหน้า dashboard และ repair-list
@@ -2730,11 +2917,11 @@ async function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / หัวหน้า</div>
+          <div class="sign-lbl">ผู้อนุมัติ / หัวหน้างาน</div>
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / เจ้านาย</div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>
