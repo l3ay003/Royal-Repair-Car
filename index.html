@@ -269,22 +269,9 @@
   }
 
   /* Auto-refresh indicator */
-  .refresh-bar {
-    position: fixed; top: 64px; left: 0; right: 0; height: 3px;
-    background: transparent; z-index: 1049; pointer-events: none;
-  }
-  .refresh-bar-fill {
-    height: 100%; width: 0%; background: var(--primary-light);
-    transition: width linear; border-radius: 0 2px 2px 0;
-  }
-  .refresh-badge {
-    position: fixed; bottom: 96px; right: 24px;
-    background: rgba(0,0,0,.55); color: #fff;
-    font-size: .75rem; padding: 4px 10px; border-radius: 20px;
-    z-index: 1039; pointer-events: none; opacity: 0;
-    transition: opacity .3s;
-  }
-  .refresh-badge.show { opacity: 1; }
+  /* sync button spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .syncing .material-icons { animation: spin .7s linear infinite; }
 
   /* ======= MODAL OVERRIDES ======= */
   .modal-content { border:none; border-radius:var(--radius-lg); box-shadow:var(--shadow-lg); }
@@ -468,6 +455,15 @@
       <span class="brand-text">ระบบแจ้งซ่อมรถยนต์</span>
     </div>
     <div class="d-flex align-items-center gap-2">
+      <!-- ปุ่ม Sync -->
+      <button id="btn-sync" onclick="manualSync()" title="รีเฟรชข้อมูล"
+        style="background:rgba(255,255,255,.18);border:none;border-radius:8px;color:#fff;
+               width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+               cursor:pointer;transition:.2s;flex-shrink:0;"
+        onmouseover="this.style.background='rgba(255,255,255,.3)'"
+        onmouseout="this.style.background='rgba(255,255,255,.18)'">
+        <span class="material-icons" style="font-size:1.2rem;">sync</span>
+      </button>
       <div class="d-none d-md-block text-end">
         <div class="user-info-text" id="nav-username">กำลังโหลด...</div>
         <span class="user-role-badge" id="nav-role">User</span>
@@ -637,6 +633,7 @@
           <div class="filter-pill" data-status="อนุมัติ">อนุมัติ</div>
           <div class="filter-pill" data-status="กำลังซ่อม">กำลังซ่อม</div>
           <div class="filter-pill" data-status="ส่งกลับแก้ไข">ส่งกลับแก้ไข</div>
+          <div class="filter-pill" data-status="รอการอนุมัติ">รอการอนุมัติ</div>
           <div class="filter-pill" data-status="เสร็จสิ้น">เสร็จสิ้น</div>
           <div class="filter-pill" data-status="ไม่อนุมัติ">ไม่อนุมัติ</div>
         </div>
@@ -1067,12 +1064,7 @@
         <div class="mb-3">
           <label class="form-label">สถานะใหม่ <span class="req">*</span></label>
           <select class="form-select" id="new-status">
-            <option value="รอดำเนินการ">รอดำเนินการ</option>
-            <option value="อนุมัติ">อนุมัติ</option>
-            <option value="ไม่อนุมัติ">ไม่อนุมัติ</option>
-            <option value="ส่งกลับแก้ไข">ส่งกลับแก้ไข</option>
-            <option value="กำลังซ่อม">กำลังซ่อม</option>
-            <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+            <!-- Options จะถูก render ตาม role ใน openStatusModal() -->
           </select>
         </div>
         <div class="mb-3">
@@ -1231,6 +1223,27 @@ const PAGE_SIZE   = 20;
 async function initLiff() {
   showLoading(true);
   try {
+    // ===== เช็ค sessionStorage ก่อน — ถ้ามีข้อมูลเก่าให้ใช้ทันที =====
+    const cached = sessionStorage.getItem('_repairUser');
+    if (cached) {
+      try {
+        currentUser = JSON.parse(cached);
+        bootApp();
+        // refresh user ล่าสุดจาก Sheet แบบ silent (background)
+        gasCall('getUser', { lineUid: currentUser.lineUid }).then(res => {
+          if (res.status === 'ok' && res.user) {
+            currentUser = { ...res.user, avatar: currentUser.avatar };
+            sessionStorage.setItem('_repairUser', JSON.stringify(currentUser));
+          }
+        });
+        showLoading(false);
+        return; // ออกจากฟังก์ชันได้เลย ไม่ต้อง init LIFF ใหม่
+      } catch(e) {
+        sessionStorage.removeItem('_repairUser'); // ถ้า parse ไม่ได้ให้ล้างทิ้ง
+      }
+    }
+
+    // ===== ไม่มี cache — init LIFF ปกติ =====
     await liff.init({ liffId: CONFIG.LIFF_ID });
     if (!liff.isLoggedIn()) { liff.login(); return; }
 
@@ -1239,41 +1252,29 @@ async function initLiff() {
     const lineAvatar = profile.pictureUrl || AVATAR_DEFAULT;
     const lineName   = profile.displayName || 'ผู้ใช้งาน';
 
-    // ลองดึง user จาก Sheet ก่อน
     const res = await gasCall('getUser', { lineUid });
 
     if (res.status === 'ok' && res.user) {
-      // --- มีในระบบแล้ว: อัปเดตชื่อและรูปล่าสุดจาก LINE ---
       currentUser = { ...res.user, avatar: lineAvatar };
-      // อัปเดต avatar ใน Sheet (ไม่บล็อก)
       gasCall('updateUserAvatar', { lineUid, avatar: lineAvatar, name: lineName });
-      bootApp();
-
     } else {
-      // --- ยังไม่มีในระบบ: สมัครอัตโนมัติ role = user ---
+      // ยังไม่มีในระบบ — สมัครอัตโนมัติ
       const regRes = await gasCall('registerUser', {
-        lineUid,
-        name:   lineName,
-        avatar: lineAvatar,
-        role:   'user',
-        dept:   '',
+        lineUid, name: lineName, avatar: lineAvatar, role: 'user', dept: '',
       });
-
-      if (regRes.status === 'ok') {
-        currentUser = {
-          lineUid,
-          name:   lineName,
-          avatar: lineAvatar,
-          role:   'user',
-          dept:   '',
-        };
-        showToast('ลงทะเบียนเข้าสู่ระบบสำเร็จ ยินดีต้อนรับ! 🎉');
-        bootApp();
-      } else {
+      if (regRes.status !== 'ok') {
         showLoading(false);
         showToast('ไม่สามารถลงทะเบียนได้: ' + (regRes.message || ''), 'error');
+        return;
       }
+      currentUser = { lineUid, name: lineName, avatar: lineAvatar, role: 'user', dept: '' };
+      showToast('ลงทะเบียนเข้าสู่ระบบสำเร็จ ยินดีต้อนรับ! 🎉');
     }
+
+    // บันทึก session
+    sessionStorage.setItem('_repairUser', JSON.stringify(currentUser));
+    bootApp();
+
   } catch (e) {
     showLoading(false);
     console.error(e);
@@ -1292,7 +1293,7 @@ function bootApp() {
 
   // Set nav
   document.getElementById('nav-username').textContent = currentUser.name;
-  document.getElementById('nav-role').textContent = currentUser.role === 'admin' ? 'Admin' : 'User';
+  document.getElementById('nav-role').textContent = {admin:'Admin',supervisor:'หัวหน้า',manager:'เจ้านาย',user:'User'}[currentUser.role] || 'User';
   document.getElementById('nav-avatar').src = currentUser.avatar;
   document.getElementById('dash-avatar').src = currentUser.avatar;
   document.getElementById('form-avatar').src = currentUser.avatar;
@@ -1312,49 +1313,18 @@ function bootApp() {
 
   loadData();
   showLoading(false);
-  startAutoRefresh();
 }
 
 /* ============================================================
    DATA LOADING
    ============================================================ */
-let _refreshTimer   = null;
-let _refreshInterval = 30; // วินาที
-let _refreshRemain   = 30;
-let _barTimer        = null;
-
-function startAutoRefresh() {
-  stopAutoRefresh();
-  _refreshRemain = _refreshInterval;
-  updateRefreshBar();
-
-  _refreshTimer = setInterval(async () => {
-    // แสดง badge
-    const badge = document.getElementById('refresh-badge');
-    if (badge) { badge.classList.add('show'); setTimeout(()=>badge.classList.remove('show'), 2000); }
-
-    await loadData(true); // silent = ไม่แสดง loading overlay
-    _refreshRemain = _refreshInterval;
-  }, _refreshInterval * 1000);
-
-  // countdown bar
-  _barTimer = setInterval(() => {
-    _refreshRemain = Math.max(0, _refreshRemain - 0.1);
-    updateRefreshBar();
-  }, 100);
-}
-
-function stopAutoRefresh() {
-  if (_refreshTimer) { clearInterval(_refreshTimer); _refreshTimer = null; }
-  if (_barTimer)     { clearInterval(_barTimer);     _barTimer = null; }
-}
-
-function updateRefreshBar() {
-  const fill = document.getElementById('refresh-bar-fill');
-  if (!fill) return;
-  const pct = (1 - _refreshRemain / _refreshInterval) * 100;
-  fill.style.transition = _refreshRemain < _refreshInterval ? 'width .1s linear' : 'none';
-  fill.style.width = pct + '%';
+async function manualSync() {
+  const btn = document.getElementById('btn-sync');
+  if (!btn || btn.classList.contains('syncing')) return; // ป้องกันกด 2 ครั้ง
+  btn.classList.add('syncing');
+  await loadData(true);
+  btn.classList.remove('syncing');
+  showToast('อัปเดตข้อมูลแล้ว ✅');
 }
 
 let _loadingInProgress = false;
@@ -1363,7 +1333,7 @@ async function loadData(silent = false) {
   _loadingInProgress = true;
   if (!silent) showLoading(true);
   try {
-    const isAdmin = currentUser?.role === 'admin';
+    const isAdmin = ['admin','supervisor','manager'].includes(currentUser?.role);
     const [jobsRes, vehiclesRes, usersRes] = await Promise.all([
       gasCall('getJobs', { lineUid: currentUser.lineUid, isAdmin }),
       gasCall('getVehicles', {}),
@@ -1465,7 +1435,7 @@ function renderRepairTable() {
         <td><span class="badge-status ${statusClass(j.status)}">${j.status}</span></td>
         <td>
           <button class="btn-sm-icon" style="background:var(--info-light);color:var(--info);" title="รายละเอียด" onclick="openDetail('${j.jobId}')"><span class="material-icons">visibility</span></button>
-          ${currentUser.role==='admin' ? `
+          ${['admin','supervisor','manager'].includes(currentUser.role) ? `
           ${j.status !== 'เสร็จสิ้น' ? `<button class="btn-sm-icon ms-1" style="background:var(--accent-light);color:var(--accent);" title="แก้ไข" onclick="openEditRepair('${j.jobId}')"><span class="material-icons">edit</span></button>` : ''}
           ${j.status !== 'เสร็จสิ้น' ? `<button class="btn-sm-icon ms-1" style="background:var(--primary-xlight);color:var(--primary);" title="เปลี่ยนสถานะ" onclick="openStatusModal('${j.jobId}')"><span class="material-icons">update</span></button>` : ''}
           <button class="btn-sm-icon ms-1" style="background:var(--danger-light);color:var(--danger);" title="ลบรายการ" onclick="confirmDeleteJob('${j.jobId}','${j.plate}')"><span class="material-icons">delete</span></button>
@@ -1522,7 +1492,7 @@ function goPage(p) {
 }
 
 function jobCard(j) {
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = ['admin','supervisor','manager'].includes(currentUser?.role);
   const adminBtns = isAdmin ? `
     <div class="d-flex gap-1 mt-2 justify-content-end" onclick="event.stopPropagation()">
       <button class="btn-sm-icon" style="background:var(--info-light);color:var(--info);" onclick="openDetail('${j.jobId}')" title="รายละเอียด"><span class="material-icons">visibility</span></button>
@@ -1561,7 +1531,7 @@ function renderUserList() {
       <img src="${u.avatar||AVATAR_DEFAULT}" alt="">
       <div class="flex-grow-1">
         <div style="font-weight:600;font-size:.88rem;">${u.name}</div>
-        <div style="font-size:.78rem;color:var(--gray-500);">${u.dept||'-'} • ${u.role==='admin'?'👑 Admin':'👤 User'}</div>
+        <div style="font-size:.78rem;color:var(--gray-500);">${u.dept||'-'} • ${ {admin:'👑 Admin',supervisor:'👔 หัวหน้า',manager:'🏢 เจ้านาย',user:'👤 User'}[u.role]||'👤 User' }</div>
       </div>
       <button class="btn-sm-icon" style="background:var(--accent-light);color:var(--accent);" onclick="openEditUser('${u.lineUid}')"><span class="material-icons">edit</span></button>
       <button class="btn-sm-icon ms-1" style="background:var(--danger-light);color:var(--danger);" onclick="deleteUser('${u.lineUid}','${u.name}')"><span class="material-icons">delete</span></button>
@@ -1584,8 +1554,10 @@ function renderVehicleList() {
 
 function populateVehicleSelect() {
   const sel = document.getElementById('f-plate');
+  const prev = sel.value; // เก็บค่าที่เลือกไว้ก่อน
   sel.innerHTML = '<option value="">-- เลือกเลขทะเบียน --</option>' +
     vehicles.map(v => `<option value="${v.plate}">${v.plate}${v.model?' ('+v.model+')':''}</option>`).join('');
+  if (prev) sel.value = prev; // restore ค่าเดิม ถ้ายังมีอยู่ใน list
 }
 
 
@@ -1652,8 +1624,10 @@ async function openStatusLog(jobId) {
 function populateVehicleHistorySelect() {
   const sel = document.getElementById('vh-plate-select');
   if (!sel) return;
+  const prev = sel.value;
   sel.innerHTML = '<option value="">-- เลือกทะเบียนรถ --</option>' +
     vehicles.map(v => `<option value="${v.plate}">${v.plate}${v.model?' ('+v.model+')':''}</option>`).join('');
+  if (prev) sel.value = prev;
 }
 
 async function loadVehicleHistory() {
@@ -2177,11 +2151,43 @@ function openDetail(jobId) {
 function openStatusModal(jobId) {
   const j = allJobs.find(x => x.jobId === jobId);
   if (!j) return;
-  // ถ้าเสร็จสิ้นแล้ว ล็อคไม่ให้แก้ไข
   if (j.status === 'เสร็จสิ้น') {
     showToast('งานนี้เสร็จสิ้นแล้ว ไม่สามารถเปลี่ยนสถานะได้', 'error');
     return;
   }
+
+  // render options ตาม role
+  const role = currentUser?.role || 'user';
+  const roleOptions = {
+    supervisor: [
+      { v:'รอดำเนินการ',   l:'รอดำเนินการ' },
+      { v:'รอการอนุมัติ', l:'ส่งต่อเจ้านาย (รอการอนุมัติ)' },
+      { v:'อนุมัติ',       l:'อนุมัติ' },
+      { v:'ไม่อนุมัติ',   l:'ไม่อนุมัติ' },
+      { v:'ส่งกลับแก้ไข', l:'ส่งกลับแก้ไข' },
+      { v:'กำลังซ่อม',    l:'กำลังซ่อม' },
+      { v:'เสร็จสิ้น',    l:'เสร็จสิ้น' },
+    ],
+    manager: [
+      { v:'รอการอนุมัติ', l:'รอการอนุมัติ' },
+      { v:'อนุมัติ',       l:'อนุมัติ ✅' },
+      { v:'ไม่อนุมัติ',   l:'ไม่อนุมัติ ❌' },
+      { v:'ส่งกลับแก้ไข', l:'ส่งกลับแก้ไข' },
+    ],
+    admin: [
+      { v:'รอดำเนินการ',       l:'รอดำเนินการ' },
+      { v:'รอการอนุมัติ', l:'รอการอนุมัติ' },
+      { v:'อนุมัติ',           l:'อนุมัติ' },
+      { v:'ไม่อนุมัติ',       l:'ไม่อนุมัติ' },
+      { v:'ส่งกลับแก้ไข',     l:'ส่งกลับแก้ไข' },
+      { v:'กำลังซ่อม',        l:'กำลังซ่อม' },
+      { v:'เสร็จสิ้น',        l:'เสร็จสิ้น' },
+    ],
+  };
+  const opts = roleOptions[role] || roleOptions['admin'];
+  const sel = document.getElementById('new-status');
+  sel.innerHTML = opts.map(o => `<option value="${o.v}">${o.l}</option>`).join('');
+
   document.getElementById('status-job-id').value = jobId;
   document.getElementById('new-status').value = j.status;
   document.getElementById('status-note').value = j.note || '';
@@ -2382,7 +2388,7 @@ function showToast(msg, type='success') {
 }
 
 function statusClass(s) {
-  return { 'รอดำเนินการ':'status-waiting','อนุมัติ':'status-approved','ไม่อนุมัติ':'status-rejected','ส่งกลับแก้ไข':'status-revise','กำลังซ่อม':'status-repairing','เสร็จสิ้น':'status-done' }[s] || '';
+  return { 'รอดำเนินการ':'status-waiting','รอการอนุมัติ':'status-pending-mgr','อนุมัติ':'status-approved','ไม่อนุมัติ':'status-rejected','ส่งกลับแก้ไข':'status-revise','กำลังซ่อม':'status-repairing','เสร็จสิ้น':'status-done' }[s] || '';
 }
 
 function formatDate(d) {
@@ -2621,11 +2627,11 @@ async function printJobPDF(jobId) {
 
   const statusColorMap = {
     'รอดำเนินการ': '#F57F17', 'อนุมัติ': '#2E7D32', 'กำลังซ่อม': '#1565C0',
-    'เสร็จสิ้น': '#1B5E20', 'ส่งกลับแก้ไข': '#6A1B9A', 'ไม่อนุมัติ': '#C62828',
+    'เสร็จสิ้น': '#1B5E20', 'ส่งกลับแก้ไข': '#6A1B9A', 'ไม่อนุมัติ': '#C62828', 'รอการอนุมัติ': '#BF360C',
   };
   const statusBgMap = {
     'รอดำเนินการ': '#FFF8E1', 'อนุมัติ': '#E8F5E9', 'กำลังซ่อม': '#E3F2FD',
-    'เสร็จสิ้น': '#C8E6C9', 'ส่งกลับแก้ไข': '#F3E5F5', 'ไม่อนุมัติ': '#FFEBEE',
+    'เสร็จสิ้น': '#C8E6C9', 'ส่งกลับแก้ไข': '#F3E5F5', 'ไม่อนุมัติ': '#FFEBEE', 'รอการอนุมัติ': '#FBE9E7',
   };
   const sc = statusColorMap[j.status] || '#333';
   const sb = statusBgMap[j.status]   || '#f5f5f5';
@@ -2922,7 +2928,7 @@ async function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / ผู้บริหาร</div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>
@@ -2974,15 +2980,10 @@ async function printJobPDF(jobId) {
   }
 }
 
-// หยุด refresh เมื่อ tab ซ่อน เพื่อประหยัด quota GAS
+// refresh ข้อมูลเมื่อกลับมาที่ tab (กรณีเปิด tab อื่นนานๆ)
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    stopAutoRefresh();
-  } else {
-    if (currentUser) {
-      loadData(true);
-      startAutoRefresh();
-    }
+  if (!document.hidden && currentUser) {
+    loadData(true);
   }
 });
 
@@ -3334,7 +3335,7 @@ td{padding:3.5px 6px;font-size:9.5px;border-bottom:1px solid #f0f0f0;}
 
 function logout() {
   if (confirm('ออกจากระบบ?')) {
-    stopAutoRefresh();
+    sessionStorage.removeItem('_repairUser'); // ล้าง cache
     currentUser = null;
     try { liff.logout(); } catch(e){}
     document.getElementById('main-app').style.display='none';
@@ -3357,9 +3358,7 @@ document.querySelectorAll('.filter-pill').forEach(p => {
 document.getElementById('search-input').addEventListener('input', () => { currentPage = 1; renderRepairTable(); });
 document.getElementById('filter-date').addEventListener('change', () => { currentPage = 1; renderRepairTable(); });
 </script>
-  <!-- Auto-refresh progress bar -->
-  <div class="refresh-bar"><div class="refresh-bar-fill" id="refresh-bar-fill"></div></div>
-  <div class="refresh-badge" id="refresh-badge">🔄 กำลังอัปเดต...</div>
+
 
   <!-- FAB แจ้งซ่อม -->
   <button class="fab-repair pulse" id="fab-repair" onclick="openRepairModal()" title="แจ้งซ่อมรถยนต์" style="display:none;">
