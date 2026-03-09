@@ -1189,10 +1189,7 @@
      SCRIPTS
 ====================================================== -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- Libraries โหลด lazy เมื่อจำเป็น — ไม่ block หน้าหลัก -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
 <script>
@@ -1200,10 +1197,36 @@
    CONFIG — แก้ค่าเหล่านี้ให้ตรงกับของคุณ
    ============================================================ */
 const CONFIG = {
-  LIFF_ID:    '2009307051-5UV6LT8a',   // LIFF ID จาก LINE Developers
-  GAS_URL:    'https://script.google.com/macros/s/AKfycbxXMkVqqmTvvCeYTq58wYb7Vl8QrVKoUXgiqEqv3FgvoTfrH6tA3UCxLznWpFBO5U_7Aw/exec',   // URL จาก Deploy > Web App ใน GAS
-  API_SECRET: 'UJ&8m@+<KL#S9z1$gB!6', // ต้องตรงกับ API_SECRET ใน Code.gs
+  LIFF_ID:    'YOUR_LIFF_ID',   // LIFF ID จาก LINE Developers
+  GAS_URL:    'YOUR_GAS_URL',   // URL จาก Deploy > Web App ใน GAS
+  API_SECRET: 'YOUR_API_SECRET_KEY', // ต้องตรงกับ API_SECRET ใน Code.gs
 };
+
+/* ============================================================
+   LAZY SCRIPT LOADER
+   ============================================================ */
+const _scriptCache = {};
+function loadScript(url) {
+  if (_scriptCache[url]) return _scriptCache[url];
+  _scriptCache[url] = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = url; s.async = true;
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return _scriptCache[url];
+}
+
+const LIBS = {
+  chartjs:     'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
+  html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+  jspdf:       'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  qrcodejs:    'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
+};
+
+async function ensureChartJs()     { await loadScript(LIBS.chartjs); }
+async function ensurePdfLibs()     { await Promise.all([loadScript(LIBS.html2canvas), loadScript(LIBS.jspdf)]); }
+async function ensureQRCode()      { await loadScript(LIBS.qrcodejs); }
 
 /* ============================================================
    STATE
@@ -1288,13 +1311,23 @@ async function initLiff() {
 /* ============================================================
    BOOT APP
    ============================================================ */
+// Keep GAS warm — ping ทุก 4 นาที ป้องกัน cold start
+let _warmTimer = null;
+function startKeepWarm() {
+  if (_warmTimer) return;
+  _warmTimer = setInterval(() => {
+    gasCall('ping', {}).catch(() => {});
+  }, 4 * 60 * 1000); // 4 นาที
+}
+
 function bootApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('main-app').style.display = 'block';
+  startKeepWarm();
 
   // Set nav
   document.getElementById('nav-username').textContent = currentUser.name;
-  document.getElementById('nav-role').textContent = {admin:'Admin',supervisor:'หัวหน้า',manager:'ผู้บริหาร',user:'User'}[currentUser.role] || 'User';
+  document.getElementById('nav-role').textContent = {admin:'Admin',supervisor:'หัวหน้า',manager:'เจ้านาย',user:'User'}[currentUser.role] || 'User';
   document.getElementById('nav-avatar').src = currentUser.avatar;
   document.getElementById('dash-avatar').src = currentUser.avatar;
   document.getElementById('form-avatar').src = currentUser.avatar;
@@ -1329,34 +1362,64 @@ async function manualSync() {
 }
 
 let _loadingInProgress = false;
-async function loadData(silent = false) {
-  if (_loadingInProgress) return; // ป้องกัน concurrent calls
-  _loadingInProgress = true;
-  if (!silent) showLoading(true);
+
+/* --- Session Cache (TTL 5 นาที) --- */
+const _CACHE_KEY = '_repairData';
+const _CACHE_TTL = 5 * 60 * 1000;
+
+function _saveCache() {
+  try { sessionStorage.setItem(_CACHE_KEY, JSON.stringify({ ts: Date.now(), allJobs, vehicles, users })); } catch(e) {}
+}
+function _loadCache() {
+  try {
+    const d = JSON.parse(sessionStorage.getItem(_CACHE_KEY) || 'null');
+    if (!d || Date.now() - d.ts > _CACHE_TTL) return false;
+    allJobs = d.allJobs || []; vehicles = d.vehicles || []; users = d.users || [];
+    return true;
+  } catch(e) { return false; }
+}
+
+function _renderAll() {
+  const isAdmin = ['admin','supervisor','manager'].includes(currentUser?.role);
+  populateVehicleSelect();
+  populateVehicleHistorySelect();
+  renderStats();
+  renderRecentJobs();
+  renderRepairTable();
+  if (isAdmin) { renderUserList(); renderVehicleList(); }
+}
+
+async function _fetchFresh(silent = false) {
   try {
     const isAdmin = ['admin','supervisor','manager'].includes(currentUser?.role);
     const [jobsRes, vehiclesRes, usersRes] = await Promise.all([
-      gasCall('getJobs', { lineUid: currentUser.lineUid, isAdmin }),
+      gasCall('getJobs',    { lineUid: currentUser.lineUid, isAdmin }),
       gasCall('getVehicles', {}),
       isAdmin ? gasCall('getUsers', {}) : Promise.resolve({ users: [] })
     ]);
-
-    if (jobsRes.status === 'error') { showToast('getJobs: ' + jobsRes.message, 'error'); }
-    
-    allJobs  = jobsRes.jobs  || [];
+    if (jobsRes.status === 'error') { if (!silent) showToast('getJobs: ' + jobsRes.message, 'error'); return; }
+    allJobs  = jobsRes.jobs      || [];
     vehicles = vehiclesRes.vehicles || [];
-    users    = usersRes.users || [];
-
-    populateVehicleSelect();
-  populateVehicleHistorySelect();
-    renderStats();
-    renderRecentJobs();
-    renderRepairTable();
-    if (isAdmin) { renderUserList(); renderVehicleList(); }
-  } catch (e) {
+    users    = usersRes.users    || [];
+    _saveCache();
+    _renderAll();
+  } catch(e) {
     console.error('loadData error:', e);
-    showToast('โหลดข้อมูลไม่สำเร็จ: ' + e.message, 'error');
+    if (!silent) showToast('โหลดข้อมูลไม่สำเร็จ: ' + e.message, 'error');
   }
+}
+
+async function loadData(silent = false) {
+  if (_loadingInProgress) return;
+  _loadingInProgress = true;
+  // มี cache — แสดงผลทันที แล้ว refresh background
+  if (_loadCache()) {
+    _renderAll();
+    _fetchFresh(true).finally(() => { _loadingInProgress = false; });
+    return;
+  }
+  if (!silent) showLoading(true);
+  await _fetchFresh(silent);
   _loadingInProgress = false;
   if (!silent) showLoading(false);
 }
@@ -1532,7 +1595,7 @@ function renderUserList() {
       <img src="${u.avatar||AVATAR_DEFAULT}" alt="">
       <div class="flex-grow-1">
         <div style="font-weight:600;font-size:.88rem;">${u.name}</div>
-        <div style="font-size:.78rem;color:var(--gray-500);">${u.dept||'-'} • ${ {admin:'👑 Admin',supervisor:'👔 หัวหน้า',manager:'🏢 ผู้บริหาร',user:'👤 User'}[u.role]||'👤 User' }</div>
+        <div style="font-size:.78rem;color:var(--gray-500);">${u.dept||'-'} • ${ {admin:'👑 Admin',supervisor:'👔 หัวหน้า',manager:'🏢 เจ้านาย',user:'👤 User'}[u.role]||'👤 User' }</div>
       </div>
       <button class="btn-sm-icon" style="background:var(--accent-light);color:var(--accent);" onclick="openEditUser('${u.lineUid}')"><span class="material-icons">edit</span></button>
       <button class="btn-sm-icon ms-1" style="background:var(--danger-light);color:var(--danger);" onclick="deleteUser('${u.lineUid}','${u.name}')"><span class="material-icons">delete</span></button>
@@ -1700,7 +1763,8 @@ async function generateYearlyReport() {
   renderYearlyReport(res);
 }
 
-function renderYearlyReport(res) {
+async function renderYearlyReport(res) {
+  await ensureChartJs();
   const { totalJobs, totalDone, totalCost, monthly, topPlates } = res;
   const MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
@@ -1876,7 +1940,8 @@ async function printYearlyReport() {
 let _qrInstance       = null;
 let _qrPosterInstance = null;
 
-function initQRCode() {
+async function initQRCode() {
+  await ensureQRCode();
   const url = window.location.href.split('?')[0];
 
   document.getElementById('qr-url-display').textContent = url;
@@ -2162,7 +2227,7 @@ function openStatusModal(jobId) {
   const roleOptions = {
     supervisor: [
       { v:'รอดำเนินการ',   l:'รอดำเนินการ' },
-      { v:'รอการอนุมัติ', l:'ส่งต่อผู้บริหาร (รอการอนุมัติ)' },
+      { v:'รอการอนุมัติ', l:'ส่งต่อเจ้านาย (รอการอนุมัติ)' },
       { v:'อนุมัติ',       l:'อนุมัติ' },
       { v:'ไม่อนุมัติ',   l:'ไม่อนุมัติ' },
       { v:'ส่งกลับแก้ไข', l:'ส่งกลับแก้ไข' },
@@ -2568,6 +2633,7 @@ async function exportCSV() {
    PDF HELPER — สร้าง PDF จาก HTML แล้ว download (ใช้ได้บนมือถือ)
    ============================================================ */
 async function savePDF(htmlContent, filename) {
+  await ensurePdfLibs();
   // สร้าง hidden iframe render HTML
   const iframe = document.createElement('iframe');
   iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:794px;height:1123px;border:none;';
@@ -2925,11 +2991,11 @@ async function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / หัวหน้า</div>
+          <div class="sign-lbl">ผู้อนุมัติ / หัวหน้างาน</div>
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / ผู้บริหาร</div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>
@@ -3021,7 +3087,7 @@ function initReportSelectors() {
   monthSel.value = now.getMonth() + 1; // ตั้ง default เดือนปัจจุบัน
 }
 
-function generateReport() {
+async function generateReport() {
   // ถ้า selector ยังไม่มีค่าให้ init ก่อน
   const yearEl  = document.getElementById('report-year');
   const monthEl = document.getElementById('report-month');
@@ -3081,6 +3147,7 @@ function generateReport() {
   // ===== Chart 1: Status Pie =====
   const statusCounts = statuses.map(s => jobs.filter(j => j.status===s).length);
   const hasStatusData = statusCounts.some(c => c > 0);
+  await ensureChartJs();
   if (chartStatus) chartStatus.destroy();
   const ctxStatus = document.getElementById('chart-status');
   if (!hasStatusData) {
@@ -3336,7 +3403,9 @@ td{padding:3.5px 6px;font-size:9.5px;border-bottom:1px solid #f0f0f0;}
 
 function logout() {
   if (confirm('ออกจากระบบ?')) {
-    sessionStorage.removeItem('_repairUser'); // ล้าง cache
+    sessionStorage.removeItem('_repairUser');
+    sessionStorage.removeItem('_repairData');
+    if (_warmTimer) { clearInterval(_warmTimer); _warmTimer = null; }
     currentUser = null;
     try { liff.logout(); } catch(e){}
     document.getElementById('main-app').style.display='none';
