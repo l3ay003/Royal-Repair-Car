@@ -1,0 +1,7 @@
+# ===== Key ส่วนตัว — ห้าม push =====
+config.js
+
+# ===== ไฟล์ระบบ =====
+.DS_Store
+Thumbs.db
+*.log

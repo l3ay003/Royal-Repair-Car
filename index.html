@@ -1194,15 +1194,26 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="config.js"></script><!-- Key ส่วนตัว — ไม่ push ขึ้น GitHub -->
 
 <script>
 /* ============================================================
    CONFIG — แก้ค่าเหล่านี้ให้ตรงกับของคุณ
    ============================================================ */
-const CONFIG = {
-  LIFF_ID: '2009307051-5UV6LT8a',                          // LIFF ID จาก LINE Developers
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbxXMkVqqmTvvCeYTq58wYb7Vl8QrVKoUXgiqEqv3FgvoTfrH6tA3UCxLznWpFBO5U_7Aw/exec',   // URL จาก Deploy > Web App ใน GAS
-};
+// CONFIG โหลดจาก config.js (ไม่ติด git)
+// ถ้าไม่พบ config.js จะแสดง error แนะนำให้สร้างไฟล์
+if (typeof APP_CONFIG === 'undefined') {
+  document.body.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#1a237e;color:#fff;font-family:sans-serif;padding:2rem;text-align:center;">
+      <div>
+        <div style="font-size:3rem;">⚙️</div>
+        <h2>ยังไม่ได้ตั้งค่าระบบ</h2>
+        <p style="opacity:.8;">กรุณาสร้างไฟล์ <code>config.js</code> ในโฟลเดอร์เดียวกับ index.html<br>ดูตัวอย่างได้ที่ <code>config.example.js</code></p>
+      </div>
+    </div>`;
+  throw new Error('config.js not found');
+}
+const CONFIG = APP_CONFIG;
 
 /* ============================================================
    STATE
@@ -2354,13 +2365,13 @@ function gasCall(action, params = {}) {
       if (hasBase64) {
         // upload รูป: POST พร้อม payload= urlencoded
         // GAS รับได้ผ่าน e.parameter.payload หรือ e.postData.contents
-        const payloadStr = JSON.stringify({ action, ...params });
+        const payloadStr = JSON.stringify({ action, ...params, _secret: CONFIG.API_SECRET || '' });
         xhr.open('POST', CONFIG.GAS_URL, true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.send('payload=' + encodeURIComponent(payloadStr));
       } else {
         // request ปกติ: GET query string
-        const url = CONFIG.GAS_URL + '?payload=' + encodeURIComponent(JSON.stringify({ action, ...params }));
+        const url = CONFIG.GAS_URL + '?payload=' + encodeURIComponent(JSON.stringify({ action, ...params, _secret: CONFIG.API_SECRET || '' }));
         xhr.open('GET', url, true);
         xhr.send();
       }
