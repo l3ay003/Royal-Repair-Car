@@ -536,7 +536,7 @@
       <div class="page-section active" id="page-dashboard">
         <div class="page-title">
           <span class="material-icons">dashboard</span> แดชบอร์ด
-          <button class="btn-repair-header btn-repair-dashboard" onclick="openRepairModal()">
+          <button class="btn-repair-header btn-repair-dashboard" id="btn-repair-dashboard" onclick="openRepairModal()">
             <span class="material-icons" style="font-size:1.3rem;">add_circle</span>
             <span>แจ้งซ่อมรถยนต์</span>
           </button>
@@ -591,6 +591,37 @@
               <div class="stat-lbl-h">ส่งกลับแก้ไข</div>
             </div>
 
+            <!-- Manager-only stats -->
+            <div class="stat-card-h manager-only-stat" style="display:none;cursor:pointer;" onclick="navigate('manager-jobs')">
+              <div class="stat-icon-h" style="background:#FFF8E1;color:#F57F17;"><span class="material-icons">pending</span></div>
+              <div class="stat-val-h animate-num" id="stat-mgr-pending">0</div>
+              <div class="stat-lbl-h">รอการอนุมัติ</div>
+            </div>
+
+            <div class="stat-card-h manager-only-stat" style="display:none;cursor:pointer;" onclick="navigate('manager-jobs')">
+              <div class="stat-icon-h" style="background:#E8F5E9;color:#2E7D32;"><span class="material-icons">check_circle</span></div>
+              <div class="stat-val-h animate-num" id="stat-mgr-approved">0</div>
+              <div class="stat-lbl-h">อนุมัติ</div>
+            </div>
+
+            <div class="stat-card-h manager-only-stat" style="display:none;cursor:pointer;" onclick="navigate('manager-jobs')">
+              <div class="stat-icon-h" style="background:#FFEBEE;color:#C62828;"><span class="material-icons">cancel</span></div>
+              <div class="stat-val-h animate-num" id="stat-mgr-rejected">0</div>
+              <div class="stat-lbl-h">ไม่อนุมัติ</div>
+            </div>
+
+            <div class="stat-card-h manager-only-stat" style="display:none;cursor:pointer;" onclick="navigate('manager-jobs')">
+              <div class="stat-icon-h" style="background:#F3E5F5;color:#6A1B9A;"><span class="material-icons">replay</span></div>
+              <div class="stat-val-h animate-num" id="stat-mgr-revise">0</div>
+              <div class="stat-lbl-h">ส่งกลับแก้ไข</div>
+            </div>
+
+            <div class="stat-card-h manager-only-stat" style="display:none;cursor:default;">
+              <div class="stat-icon-h" style="background:#E8EAF6;color:#283593;"><span class="material-icons">payments</span></div>
+              <div class="stat-val-h" id="stat-mgr-cost" style="font-size:1rem;">0</div>
+              <div class="stat-lbl-h">ยอดอนุมัติ (฿)</div>
+            </div>
+
           </div>
         </div>
 
@@ -615,7 +646,7 @@
               <span class="material-icons" style="font-size:1rem;">download</span>
               <span class="d-none d-sm-inline">Export </span>CSV
             </button>
-            <button class="btn-repair-header" onclick="openRepairModal()">
+            <button class="btn-repair-header" id="btn-repair-list" onclick="openRepairModal()">
               <span class="material-icons" style="font-size:1.2rem;">add_circle</span>
               <span>แจ้งซ่อม</span>
             </button>
@@ -999,9 +1030,10 @@
         <div class="filter-bar" style="margin-bottom:1rem;">
           <div class="filter-pill active" data-mgr-status="all"          onclick="filterManagerJobs('all')">ทั้งหมด</div>
           <div class="filter-pill"        data-mgr-status="รอการอนุมัติ" onclick="filterManagerJobs('รอการอนุมัติ')">รอการอนุมัติ</div>
-          <div class="filter-pill"        data-mgr-status="อนุมัติ"      onclick="filterManagerJobs('อนุมัติ')">อนุมัติแล้ว</div>
-          <div class="filter-pill"        data-mgr-status="ไม่อนุมัติ"  onclick="filterManagerJobs('ไม่อนุมัติ')">ไม่อนุมัติ</div>
+          <div class="filter-pill"        data-mgr-status="อนุมัติ"      onclick="filterManagerJobs('อนุมัติ')">อนุมัติ</div>
+          <div class="filter-pill"        data-mgr-status="เสร็จสิ้น"    onclick="filterManagerJobs('เสร็จสิ้น')">เสร็จสิ้น</div>
           <div class="filter-pill"        data-mgr-status="ส่งกลับแก้ไข" onclick="filterManagerJobs('ส่งกลับแก้ไข')">ส่งกลับแก้ไข</div>
+          <div class="filter-pill"        data-mgr-status="ไม่อนุมัติ"  onclick="filterManagerJobs('ไม่อนุมัติ')">ไม่อนุมัติ</div>
         </div>
         <!-- Desktop Table -->
         <div class="table-card d-none d-md-block">
@@ -1269,10 +1301,11 @@
    CONFIG — แก้ค่าเหล่านี้ให้ตรงกับของคุณ
    ============================================================ */
 const CONFIG = {
-  LIFF_ID:    '2009307051-5UV6LT8a',   // LIFF ID จาก LINE Developers
-  GAS_URL:    'https://script.google.com/macros/s/AKfycbxXMkVqqmTvvCeYTq58wYb7Vl8QrVKoUXgiqEqv3FgvoTfrH6tA3UCxLznWpFBO5U_7Aw/exec',   // URL จาก Deploy > Web App ใน GAS
-  API_SECRET: 'UJ&8m@+<KL#S9z1$gB!6', // ต้องตรงกับ API_SECRET ใน Code.gs
+  LIFF_ID:    'YOUR_LIFF_ID',   // LIFF ID จาก LINE Developers
+  GAS_URL:    'YOUR_GAS_URL',   // URL จาก Deploy > Web App ใน GAS
+  API_SECRET: 'YOUR_API_SECRET_KEY', // ต้องตรงกับ API_SECRET ใน Code.gs
 };
+
 /* ============================================================
    LAZY SCRIPT LOADER
    ============================================================ */
@@ -1516,10 +1549,23 @@ function renderStats() {
   animateNum('stat-repairing', count('กำลังซ่อม'));
   animateNum('stat-done',      count('เสร็จสิ้น'));
   animateNum('stat-total',     mine.length);
-  if ((currentUser.role || '') === 'admin') {
+  if (['admin','supervisor'].includes(currentUser.role)) {
     animateNum('stat-rejected', count('ไม่อนุมัติ'));
     animateNum('stat-revise',   count('ส่งกลับแก้ไข'));
     document.querySelectorAll('.admin-only-stat').forEach(el => el.style.display = '');
+  }
+  if (currentUser.role === 'manager') {
+    animateNum('stat-mgr-pending',  count('รอการอนุมัติ'));
+    animateNum('stat-mgr-approved', count('อนุมัติ'));
+    animateNum('stat-mgr-rejected', count('ไม่อนุมัติ'));
+    animateNum('stat-mgr-revise',   count('ส่งกลับแก้ไข'));
+    const cost = mine.filter(j => j.status === 'อนุมัติ').reduce((s,j) => s+(Number(j.estimate)||0), 0);
+    document.getElementById('stat-mgr-cost').textContent = cost.toLocaleString();
+    document.querySelectorAll('.manager-only-stat').forEach(el => el.style.display = '');
+    // manager ไม่ต้องเห็น stat รอดำเนินการ / กำลังซ่อม
+    document.querySelector('[id="stat-waiting"]')?.closest('.stat-card-h')?.style.setProperty('display','none');
+    document.querySelector('[id="stat-repairing"]')?.closest('.stat-card-h')?.style.setProperty('display','none');
+    document.querySelector('[id="stat-done"]')?.closest('.stat-card-h')?.style.setProperty('display','none');
   }
 
   // badge
@@ -1858,11 +1904,17 @@ async function renderYearlyReport(res) {
   const { totalJobs, totalDone, totalCost, monthly, topPlates } = res;
   const MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
+  const totalApproved = res.totalApproved ?? allJobs.filter(j=>j.status==='อนุมัติ').length;
+  const totalRejected = res.totalRejected ?? allJobs.filter(j=>j.status==='ไม่อนุมัติ').length;
+  const approvedBudgetY = res.approvedBudget ?? allJobs.filter(j=>j.status==='อนุมัติ').reduce((s,j)=>s+(Number(j.estimate)||0),0);
   const summaryData = [
-    { icon:'build_circle', label:'งานซ่อมทั้งหมด', val:totalJobs, color:'#1565C0', bg:'#E3F2FD' },
-    { icon:'check_circle', label:'เสร็จสิ้น', val:totalDone, color:'#2E7D32', bg:'#E8F5E9' },
-    { icon:'payments', label:'ค่าใช้จ่ายรวม (บาท)', val:Number(totalCost).toLocaleString(), color:'#E65100', bg:'#FFF3E0' },
-    { icon:'percent', label:'อัตราเสร็จสิ้น', val:(totalJobs ? Math.round(totalDone/totalJobs*100) : 0)+'%', color:'#6A1B9A', bg:'#F3E5F5' },
+    { icon:'build_circle', label:'งานซ่อมทั้งหมด',   val:totalJobs,  color:'#1565C0', bg:'#E3F2FD' },
+    { icon:'check_circle', label:'เสร็จสิ้น',          val:totalDone,  color:'#2E7D32', bg:'#E8F5E9' },
+    { icon:'thumb_up',     label:'อนุมัติ',            val:totalApproved, color:'#388E3C', bg:'#F1F8E9' },
+    { icon:'thumb_down',   label:'ไม่อนุมัติ',         val:totalRejected, color:'#C62828', bg:'#FFEBEE' },
+    { icon:'payments',     label:'ยอดอนุมัติ (ประเมิน)', val:Number(approvedBudgetY).toLocaleString()+' ฿', color:'#F57F17', bg:'#FFF8E1' },
+    { icon:'receipt',      label:'ค่าใช้จ่ายจริงรวม', val:Number(totalCost).toLocaleString()+' ฿', color:'#E65100', bg:'#FFF3E0' },
+    { icon:'percent',      label:'อัตราเสร็จสิ้น',    val:(totalJobs ? Math.round(totalDone/totalJobs*100) : 0)+'%', color:'#6A1B9A', bg:'#F3E5F5' },
   ];
   document.getElementById('yearly-summary-row').innerHTML = summaryData.map(s => `
     <div class="report-summary-card" style="background:${s.bg};border-color:${s.color}20;flex:1;min-width:130px;">
@@ -1877,8 +1929,10 @@ async function renderYearlyReport(res) {
     data: {
       labels: MONTHS,
       datasets: [
-        { label:'งานทั้งหมด', data: monthly.map(m=>m.total), backgroundColor:'rgba(21,101,192,.7)', borderRadius:4 },
-        { label:'เสร็จสิ้น',  data: monthly.map(m=>m.done),  backgroundColor:'rgba(46,125,50,.7)',  borderRadius:4 },
+        { label:'งานทั้งหมด', data: monthly.map(m=>m.total),    backgroundColor:'rgba(21,101,192,.7)',  borderRadius:4 },
+        { label:'เสร็จสิ้น',  data: monthly.map(m=>m.done),     backgroundColor:'rgba(46,125,50,.7)',   borderRadius:4 },
+        { label:'อนุมัติ',    data: monthly.map(m=>m.approved||0), backgroundColor:'rgba(56,142,60,.5)', borderRadius:4 },
+        { label:'ไม่อนุมัติ', data: monthly.map(m=>m.rejected||0), backgroundColor:'rgba(198,40,40,.5)', borderRadius:4 },
       ]
     },
     options: { responsive:true, plugins:{ legend:{ position:'top' } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
@@ -2287,20 +2341,41 @@ function renderManagerJobs() {
     </div>`).join('');
 }
 
-// ตัดสินใจด่วน — prompt หมายเหตุถ้าจำเป็น
-async function quickDecision(jobId, decision) {
-  const icons = { 'อนุมัติ':'✅', 'ไม่อนุมัติ':'❌', 'ส่งกลับแก้ไข':'⚠️' };
-  let note = '';
+// ตัดสินใจด่วน — ถ้าต้องใส่เหตุผลให้เปิด modal ก่อน
+function quickDecision(jobId, decision) {
   if (['ไม่อนุมัติ','ส่งกลับแก้ไข'].includes(decision)) {
-    note = prompt(`${icons[decision]} ${decision}
-กรุณาระบุเหตุผล (หรือกด OK เพื่อข้าม):`);
-    if (note === null) return; // กด Cancel
-    note = note.trim();
+    const icons = { 'ไม่อนุมัติ':'❌', 'ส่งกลับแก้ไข':'⚠️' };
+    document.getElementById('mgr-note-jobid').value    = jobId;
+    document.getElementById('mgr-note-decision').value = decision;
+    document.getElementById('mgr-note-text').value     = '';
+    document.getElementById('mgr-note-title').textContent = `${icons[decision]} ${decision}`;
+    const btn = document.getElementById('mgr-note-confirm-btn');
+    btn.style.background = decision === 'ไม่อนุมัติ' ? 'var(--danger)' : 'var(--warning)';
+    btn.style.color = decision === 'ไม่อนุมัติ' ? '#fff' : '#333';
+    closeModal('modalDetail'); // ปิด detail modal ถ้าเปิดอยู่
+    showModal('modalManagerNote');
+  } else {
+    // อนุมัติ — ไม่ต้องใส่เหตุผล ทำเลย
+    _submitManagerDecision(jobId, 'อนุมัติ', '');
   }
+}
+
+async function confirmManagerDecision() {
+  const jobId    = document.getElementById('mgr-note-jobid').value;
+  const decision = document.getElementById('mgr-note-decision').value;
+  const note     = document.getElementById('mgr-note-text').value.trim();
+  closeModal('modalManagerNote');
+  await _submitManagerDecision(jobId, decision, note);
+}
+
+async function _submitManagerDecision(jobId, decision, note) {
+  const icons = { 'อนุมัติ':'✅', 'ไม่อนุมัติ':'❌', 'ส่งกลับแก้ไข':'⚠️' };
+  showLoading(true);
   const res = await gasCall('updateStatus', {
     jobId, status: decision, note, actualCost: '',
     adminUid: currentUser.lineUid,
   });
+  showLoading(false);
   if (res.status === 'ok') {
     showToast(`${icons[decision]} ${decision}แล้ว`);
     sessionStorage.removeItem('_repairData');
@@ -3243,11 +3318,11 @@ async function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / หัวหน้า</div>
+          <div class="sign-lbl">ผู้อนุมัติ / หัวหน้างาน</div>
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / ผู้บริหาร</div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>
@@ -3279,6 +3354,28 @@ async function printJobPDF(jobId) {
         </div>
         <div class="d-md-none p-2" id="status-log-cards"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MANAGER NOTE MODAL ===== -->
+<div class="modal-overlay" id="modalManagerNote" style="display:none;">
+  <div class="modal-box" style="max-width:420px;">
+    <div class="modal-header">
+      <h5 class="modal-title" id="mgr-note-title">ระบุเหตุผล</h5>
+      <button class="modal-close" onclick="closeModal('modalManagerNote')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="mgr-note-jobid">
+      <input type="hidden" id="mgr-note-decision">
+      <div class="mb-3">
+        <label class="form-label">หมายเหตุ / เหตุผล <span style="color:var(--gray-400);font-size:.8rem;">(ไม่บังคับ)</span></label>
+        <textarea class="form-control" id="mgr-note-text" rows="3" placeholder="ระบุเหตุผลหรือหมายเหตุ..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer justify-content-end gap-2">
+      <button class="btn-outline-custom" onclick="closeModal('modalManagerNote')">ยกเลิก</button>
+      <button class="btn-primary-custom" id="mgr-note-confirm-btn" onclick="confirmManagerDecision()">ยืนยัน</button>
     </div>
   </div>
 </div>
@@ -3373,11 +3470,16 @@ async function generateReport() {
   const colors   = ['#F57F17','#2E7D32','#1565C0','#1B5E20','#6A1B9A','#C62828'];
   const totalCost = jobs.reduce((s,j) => s + (parseFloat(j.actualCost)||0), 0);
 
+  const approvedCount  = jobs.filter(j => j.status === 'อนุมัติ').length;
+  const rejectedCount  = jobs.filter(j => j.status === 'ไม่อนุมัติ').length;
+  const approvedBudget = jobs.filter(j => j.status === 'อนุมัติ').reduce((s,j) => s+(Number(j.estimate)||0), 0);
   const summaryCards = [
-    { val: jobs.length,                 lbl: 'งานทั้งหมด',     icon: 'list_alt',      c: '#283593', bg: '#E8EAF6' },
+    { val: jobs.length,  lbl: 'งานทั้งหมด',    icon: 'list_alt',     c: '#283593', bg: '#E8EAF6' },
     { val: jobs.filter(j=>j.status==='เสร็จสิ้น').length, lbl: 'เสร็จสิ้น', icon: 'check_circle', c: '#1B5E20', bg: '#E8F5E9' },
-    { val: jobs.filter(j=>j.status==='รอดำเนินการ').length, lbl: 'รอดำเนินการ', icon: 'pending', c: '#E65100', bg: '#FFF3E0' },
-    { val: totalCost > 0 ? totalCost.toLocaleString()+' ฿' : '-', lbl: 'ค่าใช้จ่ายรวม', icon: 'payments', c: '#2E7D32', bg: '#E8F5E9' },
+    { val: approvedCount, lbl: 'อนุมัติ',       icon: 'thumb_up',     c: '#2E7D32', bg: '#E8F5E9' },
+    { val: rejectedCount, lbl: 'ไม่อนุมัติ',   icon: 'thumb_down',   c: '#C62828', bg: '#FFEBEE' },
+    { val: approvedBudget > 0 ? approvedBudget.toLocaleString()+' ฿' : '-', lbl: 'ยอดอนุมัติ (ประเมิน)', icon: 'payments', c: '#F57F17', bg: '#FFF8E1' },
+    { val: totalCost > 0 ? totalCost.toLocaleString()+' ฿' : '-', lbl: 'ค่าใช้จ่ายจริงรวม', icon: 'receipt', c: '#1565C0', bg: '#E3F2FD' },
   ];
 
   const monthLabel = monthName + ' ' + (year+543);
@@ -3706,6 +3808,28 @@ document.getElementById('repair-sort').addEventListener('change', () => { curren
         </div>
         <div class="d-md-none p-2" id="status-log-cards"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MANAGER NOTE MODAL ===== -->
+<div class="modal-overlay" id="modalManagerNote" style="display:none;">
+  <div class="modal-box" style="max-width:420px;">
+    <div class="modal-header">
+      <h5 class="modal-title" id="mgr-note-title">ระบุเหตุผล</h5>
+      <button class="modal-close" onclick="closeModal('modalManagerNote')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="mgr-note-jobid">
+      <input type="hidden" id="mgr-note-decision">
+      <div class="mb-3">
+        <label class="form-label">หมายเหตุ / เหตุผล <span style="color:var(--gray-400);font-size:.8rem;">(ไม่บังคับ)</span></label>
+        <textarea class="form-control" id="mgr-note-text" rows="3" placeholder="ระบุเหตุผลหรือหมายเหตุ..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer justify-content-end gap-2">
+      <button class="btn-outline-custom" onclick="closeModal('modalManagerNote')">ยกเลิก</button>
+      <button class="btn-primary-custom" id="mgr-note-confirm-btn" onclick="confirmManagerDecision()">ยืนยัน</button>
     </div>
   </div>
 </div>
