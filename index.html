@@ -187,6 +187,14 @@
   .repair-table tbody tr:last-child td { border-bottom:none; }
 
   /* ======= STATUS BADGES ======= */
+  .modal-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+    z-index:1055; align-items:center; justify-content:center; padding:1rem;
+  }
+  .modal-overlay .modal-box {
+    background:#fff; border-radius:16px; width:100%; max-width:480px;
+    box-shadow:0 8px 32px rgba(0,0,0,.18); overflow:hidden;
+  }
   .badge-status { font-size:.75rem; padding:.3rem .7rem; border-radius:20px; font-weight:600; white-space:nowrap; }
   .status-waiting   { background:#FFF3E0; color:#E65100; }
   .status-approved  { background:#E8F5E9; color:#2E7D32; }
@@ -612,36 +620,6 @@
               <div class="stat-lbl-h">ส่งกลับแก้ไข</div>
             </div>
 
-            <!-- Manager-only stats -->
-            <div class="stat-card-h manager-only-stat" style="display:none;cursor:pointer;" onclick="navigate('manager-jobs')">
-              <div class="stat-icon-h" style="background:#FFF8E1;color:#F57F17;"><span class="material-icons">pending</span></div>
-              <div class="stat-val-h animate-num" id="stat-mgr-pending">0</div>
-              <div class="stat-lbl-h">รอการอนุมัติ</div>
-            </div>
-
-            <div class="stat-card-h manager-only-stat" style="display:none;cursor:pointer;" onclick="navigate('manager-jobs')">
-              <div class="stat-icon-h" style="background:#E8F5E9;color:#2E7D32;"><span class="material-icons">check_circle</span></div>
-              <div class="stat-val-h animate-num" id="stat-mgr-approved">0</div>
-              <div class="stat-lbl-h">อนุมัติ</div>
-            </div>
-
-            <div class="stat-card-h manager-only-stat" style="display:none;cursor:pointer;" onclick="navigate('manager-jobs')">
-              <div class="stat-icon-h" style="background:#FFEBEE;color:#C62828;"><span class="material-icons">cancel</span></div>
-              <div class="stat-val-h animate-num" id="stat-mgr-rejected">0</div>
-              <div class="stat-lbl-h">ไม่อนุมัติ</div>
-            </div>
-
-            <div class="stat-card-h manager-only-stat" style="display:none;cursor:pointer;" onclick="navigate('manager-jobs')">
-              <div class="stat-icon-h" style="background:#F3E5F5;color:#6A1B9A;"><span class="material-icons">replay</span></div>
-              <div class="stat-val-h animate-num" id="stat-mgr-revise">0</div>
-              <div class="stat-lbl-h">ส่งกลับแก้ไข</div>
-            </div>
-
-            <div class="stat-card-h manager-only-stat" style="display:none;cursor:default;">
-              <div class="stat-icon-h" style="background:#E8EAF6;color:#283593;"><span class="material-icons">payments</span></div>
-              <div class="stat-val-h" id="stat-mgr-cost" style="font-size:1rem;">0</div>
-              <div class="stat-lbl-h">ยอดอนุมัติ (฿)</div>
-            </div>
 
           </div>
         </div>
@@ -1343,9 +1321,9 @@
    CONFIG — แก้ค่าเหล่านี้ให้ตรงกับของคุณ
    ============================================================ */
 const CONFIG = {
-  LIFF_ID:    '2009307051-5UV6LT8a',   // LIFF ID จาก LINE Developers
-  GAS_URL:    'https://script.google.com/macros/s/AKfycbxXMkVqqmTvvCeYTq58wYb7Vl8QrVKoUXgiqEqv3FgvoTfrH6tA3UCxLznWpFBO5U_7Aw/exec',   // URL จาก Deploy > Web App ใน GAS
-  API_SECRET: 'UJ&8m@+<KL#S9z1$gB!6', // ต้องตรงกับ API_SECRET ใน Code.gs
+  LIFF_ID:    'YOUR_LIFF_ID',   // LIFF ID จาก LINE Developers
+  GAS_URL:    'YOUR_GAS_URL',   // URL จาก Deploy > Web App ใน GAS
+  API_SECRET: 'YOUR_API_SECRET_KEY', // ต้องตรงกับ API_SECRET ใน Code.gs
 };
 
 /* ============================================================
@@ -1499,33 +1477,23 @@ function bootApp() {
     if (exportBtn) exportBtn.style.display = 'inline-flex';
   }
 
-  // Manager — ซ่อนปุ่มแจ้งซ่อม + FAB + เมนูหลักที่ไม่เกี่ยว
+  // Manager — ซ่อน FAB และ sidebar เมนูหลักทั้งก้อน
   if (role === 'manager') {
-    ['btn-repair-dashboard','btn-repair-list'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = 'none';
-    });
-    // ซ่อน FAB ทันที และป้องกัน navigate แสดงซ้ำ
     const fab = document.getElementById('fab-repair');
     if (fab) { fab.style.display = 'none'; fab.style.setProperty('display','none','important'); }
-    // ซ่อน sidebar เมนูหลัก (แดชบอร์ด, รายการแจ้งซ่อมของ user) 
-    const mainMenu = document.querySelector('.sidebar-section-label:first-of-type');
-    document.querySelectorAll('[data-page="dashboard"],[data-page="repair-list"]').forEach(el => {
-      el.style.display = 'none';
-    });
-    const mainLabel = document.querySelector('#sidebar .sidebar-section-label');
-    if (mainLabel) mainLabel.style.display = 'none';
+    const mainMenu = document.getElementById('main-menu');
+    if (mainMenu) mainMenu.style.display = 'none';
   }
 
-  // navigate หลัง loadData เสร็จจริง
-  (async () => {
-    await loadDataAndWait();
-    if (role === 'manager') {
-      navigate('manager-jobs');
-    } else {
-      navigate('dashboard');
-    }
-  })();
+  // navigate ทันทีก่อน (ให้ถูกหน้าตั้งแต่ต้น ไม่กระพริบ)
+  if (role === 'manager') {
+    navigate('manager-jobs');
+  } else {
+    navigate('dashboard');
+  }
+
+  // โหลดข้อมูล — ถ้ามี cache แสดงทันที ถ้าไม่มีค่อย fetch
+  loadData();
 }
 
 /* ============================================================
@@ -1562,6 +1530,7 @@ function _renderAll() {
   const role = currentUser?.role;
   const isAdmin = ['admin','supervisor'].includes(role);
   const isManager = role === 'manager';
+
   populateVehicleSelect();
   populateVehicleHistorySelect();
   renderStats();
@@ -1642,19 +1611,7 @@ function renderStats() {
     animateNum('stat-revise',   count('ส่งกลับแก้ไข'));
     document.querySelectorAll('.admin-only-stat').forEach(el => el.style.display = '');
   }
-  if (currentUser.role === 'manager') {
-    animateNum('stat-mgr-pending',  count('รอการอนุมัติ'));
-    animateNum('stat-mgr-approved', count('อนุมัติ'));
-    animateNum('stat-mgr-rejected', count('ไม่อนุมัติ'));
-    animateNum('stat-mgr-revise',   count('ส่งกลับแก้ไข'));
-    const cost = mine.filter(j => j.status === 'อนุมัติ').reduce((s,j) => s+(Number(j.estimate)||0), 0);
-    document.getElementById('stat-mgr-cost').textContent = cost.toLocaleString();
-    document.querySelectorAll('.manager-only-stat').forEach(el => el.style.display = '');
-    // manager ไม่ต้องเห็น stat รอดำเนินการ / กำลังซ่อม
-    document.querySelector('[id="stat-waiting"]')?.closest('.stat-card-h')?.style.setProperty('display','none');
-    document.querySelector('[id="stat-repairing"]')?.closest('.stat-card-h')?.style.setProperty('display','none');
-    document.querySelector('[id="stat-done"]')?.closest('.stat-card-h')?.style.setProperty('display','none');
-  }
+
 
   // badge
   const pending = allJobs.filter(j => j.status === 'รอดำเนินการ').length;
@@ -2927,8 +2884,34 @@ function gasCall(action, params = {}) {
 /* ============================================================
    HELPERS
    ============================================================ */
-function showModal(id) { new bootstrap.Modal(document.getElementById(id)).show(); }
-function closeModal(id) { bootstrap.Modal.getInstance(document.getElementById(id))?.hide(); }
+function showModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (el.classList.contains('modal-overlay')) {
+    // custom overlay modal
+    el.style.display = 'flex';
+    requestAnimationFrame(() => el.style.opacity = '1');
+  } else {
+    // Bootstrap modal
+    const old = bootstrap.Modal.getInstance(el);
+    if (old) old.dispose();
+    new bootstrap.Modal(el).show();
+  }
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (el.classList.contains('modal-overlay')) {
+    el.style.display = 'none';
+  } else {
+    const inst = bootstrap.Modal.getInstance(el);
+    if (inst) inst.hide();
+    document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+  }
+}
 function showLoading(v) { document.getElementById('loading-overlay').classList.toggle('show', v); }
 
 function showToast(msg, type='success') {
@@ -3482,7 +3465,7 @@ async function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / ผู้บริหาร</div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>
@@ -3952,47 +3935,8 @@ document.getElementById('repair-sort').addEventListener('change', () => { curren
   </button>
 
 <!-- ===== STATUS LOG MODAL (ข้อ 5) ===== -->
-<div class="modal fade" id="modalStatusLog" tabindex="-1">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header-custom">
-        <div class="modal-title"><span class="material-icons">history</span> ประวัติการเปลี่ยนสถานะ — <span id="log-job-id"></span></div>
-        <button class="btn-close-white" onclick="closeModal('modalStatusLog')"><span class="material-icons" style="font-size:1rem;">close</span></button>
-      </div>
-      <div class="modal-body p-0">
-        <div class="table-responsive d-none d-md-block">
-          <table class="table mb-0">
-            <thead><tr><th>วันที่</th><th>สถานะเดิม</th><th>สถานะใหม่</th><th>หมายเหตุ</th><th>ผู้เปลี่ยน</th></tr></thead>
-            <tbody id="status-log-tbody"></tbody>
-          </table>
-        </div>
-        <div class="d-md-none p-2" id="status-log-cards"></div>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- ===== MANAGER NOTE MODAL ===== -->
-<div class="modal-overlay" id="modalManagerNote" style="display:none;">
-  <div class="modal-box" style="max-width:420px;">
-    <div class="modal-header">
-      <h5 class="modal-title" id="mgr-note-title">ระบุเหตุผล</h5>
-      <button class="modal-close" onclick="closeModal('modalManagerNote')">&times;</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="mgr-note-jobid">
-      <input type="hidden" id="mgr-note-decision">
-      <div class="mb-3">
-        <label class="form-label">หมายเหตุ / เหตุผล <span style="color:var(--gray-400);font-size:.8rem;">(ไม่บังคับ)</span></label>
-        <textarea class="form-control" id="mgr-note-text" rows="3" placeholder="ระบุเหตุผลหรือหมายเหตุ..."></textarea>
-      </div>
-    </div>
-    <div class="modal-footer justify-content-end gap-2">
-      <button class="btn-outline-custom" onclick="closeModal('modalManagerNote')">ยกเลิก</button>
-      <button class="btn-primary-custom" id="mgr-note-confirm-btn" onclick="confirmManagerDecision()">ยืนยัน</button>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
