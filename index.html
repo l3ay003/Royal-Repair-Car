@@ -1332,9 +1332,9 @@
    CONFIG — แก้ค่าเหล่านี้ให้ตรงกับของคุณ
    ============================================================ */
 const CONFIG = {
-  LIFF_ID:    '2009307051-5UV6LT8a',   // LIFF ID จาก LINE Developers
-  GAS_URL:    'https://script.google.com/macros/s/AKfycbxXMkVqqmTvvCeYTq58wYb7Vl8QrVKoUXgiqEqv3FgvoTfrH6tA3UCxLznWpFBO5U_7Aw/exec',   // URL จาก Deploy > Web App ใน GAS
-  API_SECRET: 'UJ&8m@+<KL#S9z1$gB!6', // ต้องตรงกับ API_SECRET ใน Code.gs
+  LIFF_ID:    'YOUR_LIFF_ID',   // LIFF ID จาก LINE Developers
+  GAS_URL:    'YOUR_GAS_URL',   // URL จาก Deploy > Web App ใน GAS
+  API_SECRET: 'YOUR_API_SECRET_KEY', // ต้องตรงกับ API_SECRET ใน Code.gs
 };
 
 /* ============================================================
@@ -2395,46 +2395,87 @@ function renderManagerJobs() {
 
   // ===== Desktop =====
   tbody.innerHTML = jobs.map(j => `
-    <tr style="${j.status==='รอการอนุมัติ'?'background:rgba(255,193,7,.06);':''}">
-      <td><span style="font-weight:600;color:var(--primary-dark);">${j.jobId}</span></td>
-      <td>${j.userName}</td>
-      <td>${j.plate}</td>
-      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${j.detail}">${j.detail}</td>
-      <td style="text-align:right;">${j.estimate ? Number(j.estimate).toLocaleString() : '-'}</td>
-      <td><span class="badge-status ${statusClass(j.status)}">${j.status}</span></td>
-      <td style="white-space:nowrap;">${formatDate(j.createdAt)}</td>
-      <td>${actionBtns(j)}</td>
+    <tr style="${j.status==='รอการอนุมัติ'?'background:rgba(255,193,7,.05);':''}">
+      <td style="padding:.75rem .875rem;white-space:nowrap;">
+        <span style="font-weight:700;color:var(--primary-dark);font-size:.82rem;">${j.jobId}</span>
+      </td>
+      <td style="padding:.75rem .875rem;font-size:.85rem;">${j.userName}</td>
+      <td style="padding:.75rem .875rem;">
+        <span style="font-weight:600;font-size:.88rem;">${j.plate}</span>
+      </td>
+      <td style="padding:.75rem .875rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.84rem;color:var(--gray-700);" title="${j.detail}">${j.detail}</td>
+      <td style="padding:.75rem .875rem;text-align:right;font-weight:600;font-size:.88rem;white-space:nowrap;">
+        ${j.estimate ? Number(j.estimate).toLocaleString()+' ฿' : '<span style="color:var(--gray-400);">-</span>'}
+      </td>
+      <td style="padding:.75rem .875rem;">
+        <span class="badge-status ${statusClass(j.status)}">${j.status}</span>
+      </td>
+      <td style="padding:.75rem .875rem;white-space:nowrap;font-size:.82rem;color:var(--gray-600);">${formatDate(j.createdAt)}</td>
+      <td style="padding:.75rem .875rem;text-align:center;">
+        <div style="display:flex;gap:.4rem;justify-content:center;align-items:center;">${actionBtns(j)}</div>
+      </td>
     </tr>`).join('');
 
   // ===== Mobile =====
-  const borderColor = s => s==='รอการอนุมัติ'?'var(--warning)':s==='อนุมัติ'?'var(--success)':s==='ไม่อนุมัติ'?'var(--danger)':'var(--gray-300)';
+  const borderColor = s => ({
+    'รอการอนุมัติ':'var(--warning)',
+    'อนุมัติ':'var(--success)',
+    'ไม่อนุมัติ':'var(--danger)',
+    'ส่งกลับแก้ไข':'#9C27B0',
+    'เสร็จสิ้น':'#1B5E20'
+  }[s] || 'var(--gray-300)');
+
   cards.innerHTML = jobs.map(j => `
-    <div class="job-card" style="border-left:4px solid ${borderColor(j.status)};">
-      <div class="d-flex justify-content-between align-items-start mb-1">
-        <div>
-          <div style="font-weight:700;color:var(--primary-dark);font-size:.9rem;">${j.jobId}</div>
-          <div style="font-size:.82rem;color:var(--gray-500);">${j.userName} · ${j.plate}</div>
-        </div>
+    <div style="background:#fff;border-radius:12px;border:1px solid var(--gray-200);border-left:4px solid ${borderColor(j.status)};
+                padding:1rem;margin-bottom:.75rem;box-shadow:0 1px 4px rgba(0,0,0,.06);">
+      <!-- Row 1: JobID + Badge -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;">
+        <span style="font-weight:700;color:var(--primary-dark);font-size:.88rem;">${j.jobId}</span>
         <span class="badge-status ${statusClass(j.status)}">${j.status}</span>
       </div>
-      <div style="font-size:.85rem;color:var(--gray-700);margin:.4rem 0;">${j.detail}</div>
-      <div style="font-size:.82rem;color:var(--gray-500);margin-bottom:.7rem;">
-        💰 ${j.estimate ? Number(j.estimate).toLocaleString()+' บาท' : 'ไม่ระบุ'} &nbsp;·&nbsp; 📅 ${formatDate(j.createdAt)}
-        ${j.note ? `<br>📝 ${j.note}` : ''}
+      <!-- Row 2: ชื่อ + ทะเบียน -->
+      <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;flex-wrap:wrap;">
+        <span style="font-size:.82rem;color:var(--gray-600);">👤 ${j.userName}</span>
+        <span style="color:var(--gray-300);">|</span>
+        <span style="font-size:.85rem;font-weight:600;color:var(--gray-800);">🚗 ${j.plate}</span>
       </div>
-      <div class="d-flex gap-2 flex-wrap">
-        <button class="btn-outline-custom btn-sm" onclick="openDetail('${j.jobId}')">
-          <span class="material-icons" style="font-size:.9rem;">visibility</span> ดูรายละเอียด
+      <!-- Row 3: อาการ -->
+      <div style="font-size:.84rem;color:var(--gray-700);margin-bottom:.5rem;line-height:1.4;
+                  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">
+        ${j.detail}
+      </div>
+      <!-- Row 4: ประเมิน + วันที่ -->
+      <div style="display:flex;gap:1rem;font-size:.8rem;color:var(--gray-500);margin-bottom:.75rem;flex-wrap:wrap;">
+        <span>💰 <strong style="color:var(--gray-800);">${j.estimate ? Number(j.estimate).toLocaleString()+' ฿' : 'ไม่ระบุ'}</strong></span>
+        <span>📅 ${formatDate(j.createdAt)}</span>
+        ${j.note ? `<span style="color:var(--warning-dark);">📝 ${j.note}</span>` : ''}
+      </div>
+      <!-- Row 5: ปุ่มการดำเนินการ -->
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;border-top:1px solid var(--gray-100);padding-top:.75rem;">
+        <button onclick="openDetail('${j.jobId}')"
+          style="flex:1;min-width:100px;display:flex;align-items:center;justify-content:center;gap:.3rem;
+                 padding:.5rem .75rem;border-radius:8px;border:1.5px solid var(--gray-300);
+                 background:#fff;color:var(--gray-700);font-size:.82rem;font-weight:600;cursor:pointer;">
+          <span class="material-icons" style="font-size:.95rem;">visibility</span> รายละเอียด
         </button>
         ${j.status==='รอการอนุมัติ' ? `
-        <button class="btn-primary-custom btn-sm" style="background:var(--success);" onclick="quickDecision('${j.jobId}','อนุมัติ')">
-          <span class="material-icons" style="font-size:.9rem;">check</span> อนุมัติ
+        <button onclick="quickDecision('${j.jobId}','อนุมัติ')"
+          style="flex:1;min-width:80px;display:flex;align-items:center;justify-content:center;gap:.3rem;
+                 padding:.5rem .75rem;border-radius:8px;border:none;
+                 background:#E8F5E9;color:#2E7D32;font-size:.82rem;font-weight:700;cursor:pointer;">
+          <span class="material-icons" style="font-size:.95rem;">check_circle</span> อนุมัติ
         </button>
-        <button class="btn-primary-custom btn-sm" style="background:var(--danger);" onclick="quickDecision('${j.jobId}','ไม่อนุมัติ')">
-          <span class="material-icons" style="font-size:.9rem;">close</span> ไม่อนุมัติ
+        <button onclick="quickDecision('${j.jobId}','ไม่อนุมัติ')"
+          style="flex:1;min-width:80px;display:flex;align-items:center;justify-content:center;gap:.3rem;
+                 padding:.5rem .75rem;border-radius:8px;border:none;
+                 background:#FFEBEE;color:#C62828;font-size:.82rem;font-weight:700;cursor:pointer;">
+          <span class="material-icons" style="font-size:.95rem;">cancel</span> ไม่อนุมัติ
         </button>
-        <button class="btn-primary-custom btn-sm" style="background:var(--warning);color:#333;" onclick="quickDecision('${j.jobId}','ส่งกลับแก้ไข')">
-          <span class="material-icons" style="font-size:.9rem;">undo</span> ส่งกลับ
+        <button onclick="quickDecision('${j.jobId}','ส่งกลับแก้ไข')"
+          style="flex:1;min-width:80px;display:flex;align-items:center;justify-content:center;gap:.3rem;
+                 padding:.5rem .75rem;border-radius:8px;border:none;
+                 background:#FFF8E1;color:#F57F17;font-size:.82rem;font-weight:700;cursor:pointer;">
+          <span class="material-icons" style="font-size:.95rem;">undo</span> ส่งกลับ
         </button>` : ''}
       </div>
     </div>`).join('');
@@ -3421,7 +3462,7 @@ async function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / ผู้บริหาร/div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>
