@@ -1007,7 +1007,10 @@ function renderManagerJobs() {
   const q       = (document.getElementById('mgr-search')?.value || '').toLowerCase().trim();
   const sortVal = document.getElementById('mgr-sort')?.value || 'oldest';
 
-  let jobs = allJobs;
+  // สถานะที่ manager ไม่ต้องเห็น (เป็นงานของ supervisor ฝั่งเดียว)
+  const MGR_VISIBLE = ['รอการอนุมัติ','อนุมัติ','เสร็จสิ้น','ส่งกลับแก้ไข','ไม่อนุมัติ'];
+
+  let jobs = allJobs.filter(j => MGR_VISIBLE.includes(j.status));
   if (_mgrFilter !== 'all') jobs = jobs.filter(j => j.status === _mgrFilter);
   if (q) jobs = jobs.filter(j =>
     (j.plate||'').toLowerCase().includes(q) ||
@@ -2196,7 +2199,7 @@ async function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / ผู้บริหาร</div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>
