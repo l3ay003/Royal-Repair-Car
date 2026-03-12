@@ -1,14 +1,14 @@
 :root {
-    --primary: #2E7D32;
-    --primary-dark: #1B5E20;
-    --primary-light: #4CAF50;
-    --primary-xlight: #E8F5E9;
+    --primary: #B71C1C;
+    --primary-dark: #7F0000;
+    --primary-light: #E53935;
+    --primary-xlight: #FFEBEE;
     --accent: #FF8F00;
     --accent-light: #FFF8E1;
-    --danger: #C62828;
+    --danger: #D32F2F;
     --danger-light: #FFEBEE;
-    --warning: #F57F17;
-    --warning-light: #FFFDE7;
+    --warning: #E65100;
+    --warning-light: #FFF3E0;
     --info: #01579B;
     --info-light: #E1F5FE;
     --success: #2E7D32;
@@ -195,7 +195,7 @@
   .btn-primary-custom:active { transform:translateY(0); }
   .btn-outline-custom { background:#fff; color:var(--primary); border:1.5px solid var(--primary); border-radius:var(--radius-sm); padding:.5rem 1.1rem; font-size:.88rem; font-weight:600; font-family:'Sarabun',sans-serif; cursor:pointer; transition:var(--transition); display:inline-flex; align-items:center; gap:.4rem; }
   .btn-repair-header {
-    background: linear-gradient(135deg, #43A047, #1B5E20);
+    background: linear-gradient(135deg, #EF5350, #7F0000);
     color: #fff; border: none;
     border-radius: 24px;
     padding: .55rem 1.3rem .55rem 1rem;
@@ -227,7 +227,7 @@
     bottom: 24px;
     right: 24px;
     z-index: 1040;
-    background: linear-gradient(135deg, #43A047 0%, #1B5E20 100%);
+    background: linear-gradient(135deg, #EF5350 0%, #7F0000 100%);
     color: #fff;
     border: none;
     border-radius: 28px;
@@ -345,7 +345,7 @@
   @keyframes spin { to{transform:rotate(360deg)} }
 
   /* ======= LOGIN SCREEN ======= */
-  #login-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; background:linear-gradient(160deg, var(--primary-dark) 0%, var(--primary) 60%, #66BB6A 100%); }
+  #login-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; background:linear-gradient(160deg, var(--primary-dark) 0%, var(--primary) 60%, #E53935 100%); }
   .login-card { background:#fff; border-radius:var(--radius-lg); padding:2.5rem 2rem; width:100%; max-width:380px; text-align:center; box-shadow:var(--shadow-lg); }
   .login-logo { width:100px; height:100px; border-radius:20px; margin:0 auto 1.25rem; overflow:hidden; display:flex; align-items:center; justify-content:center; background:var(--primary-xlight); border:2px solid var(--primary-xlight); }
   .login-logo img { width:100%; height:100%; object-fit:contain; }

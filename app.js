@@ -367,7 +367,7 @@ function renderRepairTable() {
           <button class="btn-sm-icon ms-1" style="background:var(--danger-light);color:var(--danger);" title="ลบรายการ" onclick="confirmDeleteJob('${j.jobId}','${j.plate}')"><span class="material-icons">delete</span></button>
           ` : currentUser.role === 'manager' ? `
           ${j.status === 'รอการอนุมัติ' ? `
-          <button class="btn-sm-icon ms-1" style="background:#E8F5E9;color:var(--success);" title="อนุมัติ" onclick="quickDecision('${j.jobId}','อนุมัติ')"><span class="material-icons">check</span></button>
+          <button class="btn-sm-icon ms-1" style="background:#FFEBEE;color:var(--success);" title="อนุมัติ" onclick="quickDecision('${j.jobId}','อนุมัติ')"><span class="material-icons">check</span></button>
           <button class="btn-sm-icon ms-1" style="background:#FFEBEE;color:var(--danger);" title="ไม่อนุมัติ" onclick="quickDecision('${j.jobId}','ไม่อนุมัติ')"><span class="material-icons">close</span></button>
           <button class="btn-sm-icon ms-1" style="background:#FFF8E1;color:#F57F17;" title="ส่งกลับแก้ไข" onclick="quickDecision('${j.jobId}','ส่งกลับแก้ไข')"><span class="material-icons">undo</span></button>` : ''}
           ` : (j.status==='ส่งกลับแก้ไข' && j.lineUid===currentUser.lineUid ? `<button class="btn-sm-icon ms-1" style="background:var(--warning-light);color:var(--warning);" title="แก้ไข" onclick="openEditRepair('${j.jobId}')"><span class="material-icons">edit</span></button>` : '')}
@@ -441,7 +441,7 @@ function jobCard(j) {
     <div class="d-flex gap-1 mt-2 justify-content-end" onclick="event.stopPropagation()">
       <button class="btn-sm-icon" style="background:var(--info-light);color:var(--info);" onclick="openDetail('${j.jobId}')" title="รายละเอียด"><span class="material-icons">visibility</span></button>
       ${j.status === 'รอการอนุมัติ' ? `
-      <button class="btn-sm-icon" style="background:#E8F5E9;color:var(--success);" onclick="quickDecision('${j.jobId}','อนุมัติ')" title="อนุมัติ"><span class="material-icons">check</span></button>
+      <button class="btn-sm-icon" style="background:#FFEBEE;color:var(--success);" onclick="quickDecision('${j.jobId}','อนุมัติ')" title="อนุมัติ"><span class="material-icons">check</span></button>
       <button class="btn-sm-icon" style="background:#FFEBEE;color:var(--danger);" onclick="quickDecision('${j.jobId}','ไม่อนุมัติ')" title="ไม่อนุมัติ"><span class="material-icons">close</span></button>
       <button class="btn-sm-icon" style="background:#FFF8E1;color:#F57F17;" onclick="quickDecision('${j.jobId}','ส่งกลับแก้ไข')" title="ส่งกลับแก้ไข"><span class="material-icons">undo</span></button>` : ''}
     </div>`;
@@ -668,8 +668,8 @@ async function renderYearlyReport(res) {
   const approvedBudgetY = res.approvedBudget ?? allJobs.filter(j=>j.status==='อนุมัติ').reduce((s,j)=>s+(Number(j.estimate)||0),0);
   const summaryData = [
     { icon:'build_circle', label:'งานซ่อมทั้งหมด',   val:totalJobs,  color:'#1565C0', bg:'#E3F2FD' },
-    { icon:'check_circle', label:'เสร็จสิ้น',          val:totalDone,  color:'#2E7D32', bg:'#E8F5E9' },
-    { icon:'thumb_up',     label:'อนุมัติ',            val:totalApproved, color:'#388E3C', bg:'#F1F8E9' },
+    { icon:'check_circle', label:'เสร็จสิ้น',          val:totalDone,  color:'#1B5E20', bg:'#E8F5E9' },
+    { icon:'thumb_up',     label:'อนุมัติ',            val:totalApproved, color:'#2E7D32', bg:'#E8F5E9' },
     { icon:'thumb_down',   label:'ไม่อนุมัติ',         val:totalRejected, color:'#C62828', bg:'#FFEBEE' },
     { icon:'payments',     label:'ยอดอนุมัติ (ประเมิน)', val:Number(approvedBudgetY).toLocaleString()+' ฿', color:'#F57F17', bg:'#FFF8E1' },
     { icon:'receipt',      label:'ค่าใช้จ่ายจริงรวม', val:Number(totalCost).toLocaleString()+' ฿', color:'#E65100', bg:'#FFF3E0' },
@@ -794,17 +794,17 @@ async function printYearlyReport() {
   const html = `\u003c!DOCTYPE html>\u003chtml lang="th"><head><meta charset="UTF-8">
   <style>
     body { font-family: 'Sarabun', sans-serif; font-size: 13px; color: #222; margin: 20px; }
-    h2 { color: #2E7D32; text-align: center; margin-bottom: 4px; }
+    h2 { color: #B71C1C; text-align: center; margin-bottom: 4px; }
     .subtitle { text-align:center; color:#555; margin-bottom:16px; font-size:12px; }
     .summary { display:flex; gap:12px; margin-bottom:16px; }
     .summary-card { flex:1; border:1px solid #e0e0e0; border-radius:8px; padding:10px; text-align:center; }
-    .summary-card .val { font-size:1.4rem; font-weight:700; color:#2E7D32; }
+    .summary-card .val { font-size:1.4rem; font-weight:700; color:#B71C1C; }
     .summary-card .lbl { font-size:11px; color:#666; }
     table { width:100%; border-collapse:collapse; margin-bottom:16px; }
-    th { background:#2E7D32; color:#fff; padding:6px 10px; font-size:12px; }
+    th { background:#B71C1C; color:#fff; padding:6px 10px; font-size:12px; }
     td { padding:5px 10px; border-bottom:1px solid #eee; }
     tr:nth-child(even) td { background:#f9f9f9; }
-    h3 { color:#1B5E20; font-size:13px; margin:12px 0 6px; border-left:4px solid #2E7D32; padding-left:8px; }
+    h3 { color:#7F0000; font-size:13px; margin:12px 0 6px; border-left:4px solid #B71C1C; padding-left:8px; }
     .ft { display:flex; justify-content:space-between; font-size:11px; color:#888; margin-top:16px; }
   </style></head><body>
   <h2>รายงานสรุปรายปี พ.ศ. ${year+543}</h2>
@@ -884,7 +884,7 @@ function printQR() {
       <style>
         body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f5;}
         .card{background:#fff;border-radius:16px;padding:32px 24px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.1);max-width:320px;}
-        h2{color:#1B5E20;font-family:sans-serif;margin:0 0 16px;}
+        h2{color:#7F0000;font-family:sans-serif;margin:0 0 16px;}
         img{width:220px;height:220px;border:2px solid #eee;border-radius:8px;padding:8px;}
         p{font-size:12px;color:#666;margin-top:12px;word-break:break-all;}
       </style></head><body>
@@ -912,7 +912,7 @@ function printPoster() {
         @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&display=swap');
         *{margin:0;padding:0;box-sizing:border-box;}
         body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f0f0f0;}
-        .poster{background:linear-gradient(160deg,#1B5E20 0%,#2E7D32 60%,#388E3C 100%);
+        .poster{background:linear-gradient(160deg,#7F0000 0%,#B71C1C 60%,#C62828 100%);
           border-radius:20px;padding:40px 32px;text-align:center;color:#fff;
           font-family:'Prompt',sans-serif;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.25);}
         .logo{font-size:2.5rem;margin-bottom:8px;}
@@ -1131,7 +1131,7 @@ function renderManagerJobs() {
         <button onclick="quickDecision('${j.jobId}','อนุมัติ')"
           style="flex:1;min-width:80px;display:flex;align-items:center;justify-content:center;gap:.3rem;
                  padding:.5rem .75rem;border-radius:8px;border:none;
-                 background:#E8F5E9;color:#2E7D32;font-size:.82rem;font-weight:700;cursor:pointer;">
+                 background:#FFEBEE;color:#B71C1C;font-size:.82rem;font-weight:700;cursor:pointer;">
           <span class="material-icons" style="font-size:.95rem;">check_circle</span> อนุมัติ
         </button>
         <button onclick="quickDecision('${j.jobId}','ไม่อนุมัติ')"
@@ -1883,11 +1883,11 @@ async function printJobPDF(jobId) {
 
   const statusColorMap = {
     'รอดำเนินการ': '#F57F17', 'อนุมัติ': '#2E7D32', 'กำลังซ่อม': '#1565C0',
-    'เสร็จสิ้น': '#1B5E20', 'ส่งกลับแก้ไข': '#6A1B9A', 'ไม่อนุมัติ': '#C62828', 'รอการอนุมัติ': '#BF360C',
+    'เสร็จสิ้น': '#1B5E20', 'ส่งกลับแก้ไข': '#6A1B9A', 'ไม่อนุมัติ': '#B71C1C', 'รอการอนุมัติ': '#E65100',
   };
   const statusBgMap = {
-    'รอดำเนินการ': '#FFF8E1', 'อนุมัติ': '#E8F5E9', 'กำลังซ่อม': '#E3F2FD',
-    'เสร็จสิ้น': '#C8E6C9', 'ส่งกลับแก้ไข': '#F3E5F5', 'ไม่อนุมัติ': '#FFEBEE', 'รอการอนุมัติ': '#FBE9E7',
+    'รอดำเนินการ': '#FFF8E1', 'อนุมัติ': '#FFEBEE', 'กำลังซ่อม': '#E3F2FD',
+    'เสร็จสิ้น': '#E8F5E9', 'ส่งกลับแก้ไข': '#F3E5F5', 'ไม่อนุมัติ': '#FFEBEE', 'รอการอนุมัติ': '#FFF3E0',
   };
   const sc = statusColorMap[j.status] || '#333';
   const sb = statusBgMap[j.status]   || '#f5f5f5';
@@ -1912,7 +1912,7 @@ async function printJobPDF(jobId) {
   const logoSrc = document.querySelector('#login-logo-wrap img') ? document.querySelector('#login-logo-wrap img').src : '';
   const logoHtml = logoSrc && !logoSrc.includes('placeholder')
     ? `<img src="${logoSrc}" style="height:60px;object-fit:contain;">`
-    : `<div style="width:60px;height:60px;background:#2E7D32;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;">🚗</div>`;
+    : `<div style="width:60px;height:60px;background:#B71C1C;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;">🚗</div>`;
 
   const html = `\u003c!DOCTYPE html>
 \x3Chtml lang="th">
@@ -1947,7 +1947,7 @@ async function printJobPDF(jobId) {
 
   /* ===== HEADER ===== */
   .hd {
-    background:linear-gradient(135deg,#1B5E20,#2E7D32,#388E3C);
+    background:linear-gradient(135deg,#7F0000,#B71C1C,#C62828);
     color:#fff;
     padding:10px 20px;
     display:flex;
@@ -1998,10 +1998,10 @@ async function printJobPDF(jobId) {
   .sec-title {
     font-family:'Prompt',sans-serif;
     font-size:9px; font-weight:700;
-    color:#2E7D32;
+    color:#B71C1C;
     text-transform:uppercase;
     letter-spacing:.4px;
-    border-bottom:1.5px solid #C8E6C9;
+    border-bottom:1.5px solid #FFCDD2;
     padding-bottom:3px;
     margin-bottom:5px;
   }
@@ -2040,15 +2040,15 @@ async function printJobPDF(jobId) {
 
   /* cost */
   .cost-box {
-    background:linear-gradient(135deg,#E8F5E9,#F1F8E9);
-    border:1.5px solid #4CAF50;
+    background:linear-gradient(135deg,#FFEBEE,#F1F8E9);
+    border:1.5px solid #E53935;
     border-radius:6px;
     padding:6px 12px;
     display:flex;
     align-items:center;
     justify-content:space-between;
   }
-  .cost-amount { font-family:'Prompt',sans-serif; font-size:20px; font-weight:700; color:#1B5E20; }
+  .cost-amount { font-family:'Prompt',sans-serif; font-size:20px; font-weight:700; color:#7F0000; }
 
   /* images */
   .img-row { display:flex; gap:8px; }
@@ -2117,7 +2117,7 @@ async function printJobPDF(jobId) {
       <div>
         <div class="sec-title">📋 ข้อมูลการแจ้งซ่อม</div>
         <table>
-          <tr><td class="lbl">เลขที่งาน</td><td class="val" style="font-weight:700;color:#1B5E20;">${j.jobId}</td></tr>
+          <tr><td class="lbl">เลขที่งาน</td><td class="val" style="font-weight:700;color:#7F0000;">${j.jobId}</td></tr>
           <tr><td class="lbl">ผู้แจ้งซ่อม</td><td class="val">${j.userName||'-'}</td></tr>
           <tr><td class="lbl">วันที่แจ้ง</td><td class="val">${jobDate}</td></tr>
           <tr><td class="lbl">อัปเดตล่าสุด</td><td class="val">${updateDate}</td></tr>
@@ -2166,7 +2166,7 @@ async function printJobPDF(jobId) {
       <div class="sec-title">📎 เอกสารแนบ</div>
       <div class="img-row">
         ${j.imageUrl ? `<div class="img-box"><div class="img-lbl" style="background:#E3F2FD;color:#1565C0;">📷 รูปประกอบ</div><img src="${j.imageUrl}" onerror="this.parentElement.style.display='none'"></div>` : ''}
-        ${j.billUrl  ? `<div class="img-box"><div class="img-lbl" style="background:#E8F5E9;color:#2E7D32;">🧾 บิล/ใบเสร็จ</div><img src="${j.billUrl}" onerror="this.parentElement.style.display='none'"></div>` : ''}
+        ${j.billUrl  ? `<div class="img-box"><div class="img-lbl" style="background:#FFEBEE;color:#B71C1C;">🧾 บิล/ใบเสร็จ</div><img src="${j.billUrl}" onerror="this.parentElement.style.display='none'"></div>` : ''}
       </div>
     </div>` : ''}
 
@@ -2184,7 +2184,7 @@ async function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / ผู้บริหาร</div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>
@@ -2307,7 +2307,7 @@ async function generateReport() {
 
   // ===== Summary Cards =====
   const statuses = ['รอดำเนินการ','อนุมัติ','กำลังซ่อม','เสร็จสิ้น','ส่งกลับแก้ไข','ไม่อนุมัติ'];
-  const colors   = ['#F57F17','#2E7D32','#1565C0','#1B5E20','#6A1B9A','#C62828'];
+  const colors   = ['#F57F17','#B71C1C','#1565C0','#7F0000','#6A1B9A','#C62828'];
   const totalCost = jobs.reduce((s,j) => s + (parseFloat(j.actualCost)||0), 0);
 
   const approvedCount  = jobs.filter(j => j.status === 'อนุมัติ').length;
@@ -2528,7 +2528,7 @@ async function printMonthlyReport() {
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{width:210mm;height:297mm;overflow:hidden;font-family:'Sarabun',sans-serif;font-size:11px;color:#222;background:#fff;}
 .page{width:210mm;height:297mm;display:flex;flex-direction:column;}
-.hd{background:linear-gradient(135deg,#1B5E20,#2E7D32);color:#fff;padding:12px 20px;flex-shrink:0;}
+.hd{background:linear-gradient(135deg,#7F0000,#B71C1C);color:#fff;padding:12px 20px;flex-shrink:0;}
 .hd h1{font-family:'Prompt',sans-serif;font-size:16px;font-weight:700;}
 .hd p{font-size:10px;opacity:.85;margin-top:2px;}
 .hd-sub{font-size:11px;opacity:.9;margin-top:4px;}
@@ -2539,11 +2539,11 @@ html,body{width:210mm;height:297mm;overflow:hidden;font-family:'Sarabun',sans-se
 .card-lbl{font-size:9px;color:#666;}
 .charts{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .chart-box{border:1px solid #e0e0e0;border-radius:8px;padding:8px;}
-.chart-box h3{font-family:'Prompt',sans-serif;font-size:10px;font-weight:700;color:#2E7D32;margin-bottom:6px;}
+.chart-box h3{font-family:'Prompt',sans-serif;font-size:10px;font-weight:700;color:#B71C1C;margin-bottom:6px;}
 .chart-box img{width:100%;max-height:130px;object-fit:contain;}
-.sec-title{font-family:'Prompt',sans-serif;font-size:10px;font-weight:700;color:#2E7D32;border-bottom:1.5px solid #C8E6C9;padding-bottom:3px;margin-bottom:5px;}
+.sec-title{font-family:'Prompt',sans-serif;font-size:10px;font-weight:700;color:#B71C1C;border-bottom:1.5px solid #FFCDD2;padding-bottom:3px;margin-bottom:5px;}
 table{width:100%;border-collapse:collapse;}
-th{background:#2E7D32;color:#fff;padding:4px 6px;font-size:9.5px;text-align:left;}
+th{background:#B71C1C;color:#fff;padding:4px 6px;font-size:9.5px;text-align:left;}
 td{padding:3.5px 6px;font-size:9.5px;border-bottom:1px solid #f0f0f0;}
 .ft{padding:6px 20px;background:#fafafa;border-top:1px solid #e0e0e0;display:flex;justify-content:space-between;font-size:9px;color:#999;flex-shrink:0;}
 </style></head><body><div class="page">
@@ -2556,7 +2556,7 @@ td{padding:3.5px 6px;font-size:9.5px;border-bottom:1px solid #f0f0f0;}
     <div class="card"><div class="card-val" style="color:#283593;">${jobs.length}</div><div class="card-lbl">งานทั้งหมด</div></div>
     <div class="card"><div class="card-val" style="color:#1B5E20;">${done}</div><div class="card-lbl">เสร็จสิ้น</div></div>
     <div class="card"><div class="card-val" style="color:#E65100;">${pending}</div><div class="card-lbl">รอดำเนินการ</div></div>
-    <div class="card"><div class="card-val" style="color:#2E7D32;">${totalCost.toLocaleString()}</div><div class="card-lbl">ค่าใช้จ่ายรวม (฿)</div></div>
+    <div class="card"><div class="card-val" style="color:#B71C1C;">${totalCost.toLocaleString()}</div><div class="card-lbl">ค่าใช้จ่ายรวม (฿)</div></div>
   </div>
   <div class="charts">
     <div class="chart-box"><h3>🍩 สัดส่วนสถานะ</h3>${statusImg?`<img src="${statusImg}">`:''}</div>
@@ -2566,7 +2566,7 @@ td{padding:3.5px 6px;font-size:9.5px;border-bottom:1px solid #f0f0f0;}
     <div>
       <div class="sec-title">🏆 ผู้แจ้งซ่อมสูงสุด</div>
       <table><thead><tr><th>#</th><th>ชื่อ</th><th>จำนวน</th></tr></thead><tbody>
-      ${topUsers.map(([n,c],i)=>`<tr><td>${i+1}</td><td>${n}</td><td style="font-weight:700;color:#2E7D32;">${c}</td></tr>`).join('')}
+      ${topUsers.map(([n,c],i)=>`<tr><td>${i+1}</td><td>${n}</td><td style="font-weight:700;color:#B71C1C;">${c}</td></tr>`).join('')}
       </tbody></table>
     </div>
     <div>
