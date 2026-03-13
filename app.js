@@ -362,7 +362,7 @@ function renderRepairTable() {
         <td>
           <button class="btn-sm-icon" style="background:var(--info-light);color:var(--info);" title="รายละเอียด" onclick="openDetail('${j.jobId}')"><span class="material-icons">visibility</span></button>
           ${['admin','supervisor'].includes(currentUser.role) ? `
-          ${['รอดำเนินการ','ส่งกลับแก้ไข'].includes(j.status) ? `<button class="btn-sm-icon ms-1" style="background:var(--accent-light);color:var(--accent);" title="แก้ไข" onclick="openEditRepair('${j.jobId}')"><span class="material-icons">edit</span></button>` : ''}
+          ${(currentUser.role==='admin' ? j.status!=='ไม่อนุมัติ' : ['รอดำเนินการ','ส่งกลับแก้ไข'].includes(j.status)) ? `<button class="btn-sm-icon ms-1" style="background:var(--accent-light);color:var(--accent);" title="แก้ไข" onclick="openEditRepair('${j.jobId}')"><span class="material-icons">edit</span></button>` : ''}
           ${j.status !== 'เสร็จสิ้น' ? `<button class="btn-sm-icon ms-1" style="background:var(--primary-xlight);color:var(--primary);" title="เปลี่ยนสถานะ" onclick="openStatusModal('${j.jobId}')"><span class="material-icons">update</span></button>` : ''}
           <button class="btn-sm-icon ms-1" style="background:var(--danger-light);color:var(--danger);" title="ลบรายการ" onclick="confirmDeleteJob('${j.jobId}','${j.plate}')"><span class="material-icons">delete</span></button>
           ` : currentUser.role === 'manager' ? `
@@ -432,7 +432,7 @@ function jobCard(j) {
     adminBtns = `
     <div class="d-flex gap-1 mt-2 justify-content-end" onclick="event.stopPropagation()">
       <button class="btn-sm-icon" style="background:var(--info-light);color:var(--info);" onclick="openDetail('${j.jobId}')" title="รายละเอียด"><span class="material-icons">visibility</span></button>
-      ${['รอดำเนินการ','ส่งกลับแก้ไข'].includes(j.status) ? `<button class="btn-sm-icon" style="background:var(--accent-light);color:var(--accent);" onclick="openEditRepair('${j.jobId}')" title="แก้ไข"><span class="material-icons">edit</span></button>` : ''}
+      ${(currentUser.role==='admin' ? j.status!=='ไม่อนุมัติ' : ['รอดำเนินการ','ส่งกลับแก้ไข'].includes(j.status)) ? `<button class="btn-sm-icon" style="background:var(--accent-light);color:var(--accent);" onclick="openEditRepair('${j.jobId}')" title="แก้ไข"><span class="material-icons">edit</span></button>` : ''}
       ${j.status !== 'เสร็จสิ้น' ? `<button class="btn-sm-icon" style="background:var(--primary-xlight);color:var(--primary);" onclick="openStatusModal('${j.jobId}')" title="เปลี่ยนสถานะ"><span class="material-icons">update</span></button>` : ''}
       <button class="btn-sm-icon" style="background:var(--danger-light);color:var(--danger);" onclick="confirmDeleteJob('${j.jobId}','${j.plate}')" title="ลบ"><span class="material-icons">delete</span></button>
     </div>`;
@@ -1349,7 +1349,7 @@ function openDetail(jobId) {
       footer.innerHTML = pdfBtn + logBtn;
     } else {
       footer.innerHTML = pdfBtn + logBtn + `
-        ${['รอดำเนินการ','ส่งกลับแก้ไข'].includes(j.status) ? `<button class="btn-outline-custom btn-sm" onclick="closeModal('modalDetail');openEditRepair('${j.jobId}')"><span class="material-icons" style="font-size:.9rem;">edit</span> แก้ไข</button>` : ''}
+        ${(currentUser.role==='admin' ? j.status!=='ไม่อนุมัติ' : ['รอดำเนินการ','ส่งกลับแก้ไข'].includes(j.status)) ? `<button class="btn-outline-custom btn-sm" onclick="closeModal('modalDetail');openEditRepair('${j.jobId}')"><span class="material-icons" style="font-size:.9rem;">edit</span> แก้ไข</button>` : ''}
         <button class="btn-primary-custom btn-sm" onclick="closeModal('modalDetail');openStatusModal('${j.jobId}')"><span class="material-icons" style="font-size:.9rem;">update</span> เปลี่ยนสถานะ</button>`;
     }
   } else if (isManager && j.status === 'รอการอนุมัติ') {
@@ -1386,7 +1386,7 @@ function openStatusModal(jobId) {
   const roleOptions = {
     supervisor: (function() {
       // รอดำเนินการ / ส่งกลับแก้ไข → ส่งต่อผู้บริหารอย่างเดียว
-      if (['รอดำเนินการ','ส่งกลับแก้ไข'].includes(j.status)) {
+      if ((currentUser.role==='admin' ? j.status!=='ไม่อนุมัติ' : ['รอดำเนินการ','ส่งกลับแก้ไข'].includes(j.status))) {
         return [{ v:'รอการอนุมัติ', l:'📋 ส่งต่อผู้บริหาร (รอการอนุมัติ)' }];
       }
       // อนุมัติ → กำลังซ่อม หรือ เสร็จสิ้น
@@ -2284,7 +2284,7 @@ async function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / ผู้บริหาร</div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>
