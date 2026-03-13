@@ -1232,7 +1232,11 @@ function openEditRepair(jobId) {
   document.getElementById('f-location').value = job.location;
   document.getElementById('f-note').value = job.note || '';
   if (job.imageUrl) {
-    document.getElementById('repair-img-preview').innerHTML = `<img src="${job.imageUrl}" style="max-height:160px;border-radius:8px;">`;
+    const box = document.getElementById('repair-img-preview');
+    const urls = parseUrls(job.imageUrl);
+    box.innerHTML = urls.map(u =>
+      `<img src="${u}" style="height:80px;width:80px;object-fit:cover;border-radius:6px;border:2px solid var(--primary-xlight);" onerror="this.style.display='none'">`
+    ).join('') + `<div style="font-size:.78rem;color:var(--gray-500);width:100%;text-align:center;margin-top:4px;">${urls.length} รูป (เลือกใหม่เพื่อแทนที่)</div>`;
   }
   showModal('modalRepair');
 }
@@ -1253,30 +1257,32 @@ async function submitRepair() {
   submitting = true;
   showLoading(true);
 
-  // Upload image if any
-  let imageUrl = ''; let viewUrl = '';
-  const imgFile = document.getElementById('f-image').files[0];
-  if (imgFile) {
-    const compressed = await compressImage(imgFile);
-    // ส่ง jobId ถ้าแก้ไข (editingJobId) หรือส่งค่าว่างถ้าสร้างใหม่ (GAS จะใช้ชื่อ temp ก่อน แล้ว rename หลัง createJob)
-    const upRes = await gasCall('uploadImage', {
-      base64: compressed.b64, mimeType: compressed.mime,
-      filename: compressed.filename, folderType: 'repair',
-      jobId: editingJobId || ''
-    });
-    if (upRes.status !== 'ok') { showLoading(false); submitting = false; showToast('อัปโหลดรูปไม่สำเร็จ: ' + (upRes.message || ''), 'error'); return; }
-    imageUrl = upRes.url || '';
-    viewUrl  = upRes.viewUrl || '';
-    window._lastUploadedFileId = upRes.fileId || '';
+  // Upload รูปแจ้งซ่อม (parallel หลายรูป)
+  let imageUrls = []; let imageUrl = ''; let viewUrl = '';
+  const imgFiles = document.getElementById('f-image').files;
+  if (imgFiles.length > 0) {
+    try {
+      const results = await uploadMultiImages(imgFiles, 'repair', editingJobId || '');
+      imageUrls = results.map(r => r.url).filter(Boolean);
+      imageUrl  = JSON.stringify(imageUrls);   // เก็บเป็น JSON array
+      viewUrl   = results[0]?.viewUrl || '';   // viewUrl รูปแรก (backward compat)
+      window._lastUploadedFileId = results[0]?.fileId || '';
+    } catch(e) {
+      showLoading(false); submitting = false;
+      showToast('อัปโหลดรูปไม่สำเร็จ: ' + e.message, 'error'); return;
+    }
   }
 
   const action = editingJobId ? 'updateJob' : 'createJob';
   const payload = {
     lineUid: currentUser.lineUid,
     userName: currentUser.name,
-    plate, mileage, detail, estimate, location, imageUrl, viewUrl, note,
+    plate, mileage, detail, estimate, location,
+    imageUrl: imageUrl || (editingJobId ? undefined : ''),  // JSON array string หรือ string เดิม
+    viewUrl,
+    note,
     jobId: editingJobId || '',
-    imageFileId: (!editingJobId && imgFile) ? (window._lastUploadedFileId || '') : ''
+    imageFileId: (!editingJobId && imgFiles?.length) ? (window._lastUploadedFileId || '') : ''
   };
 
   const res = await gasCall(action, payload);
@@ -1327,8 +1333,8 @@ function openDetail(jobId) {
       return `<div class="detail-row"><div class="detail-label">${label}</div><div class="detail-value">${vals[i]}</div></div>`;
     }).join('')}
     ${j.actualCost ? `<div class="detail-row"><div class="detail-label">ค่าใช้จ่ายจริง</div><div class="detail-value text-success fw-bold">${Number(j.actualCost).toLocaleString()} บาท</div></div>` : ''}
-    ${j.imageUrl ? `<div class="mt-3"><div class="form-label mb-1">📷 รูปประกอบ</div><div class="d-flex align-items-center gap-2 flex-wrap"><img src="${j.imageUrl}" class="bill-thumb" onclick="viewImage('${j.imageUrl}')" onerror="this.style.display='none'"><a href="${j.viewUrl||j.imageUrl}" target="_blank" class="btn-outline-custom btn-sm" style="font-size:.8rem;"><span class="material-icons" style="font-size:.9rem;">open_in_new</span> เปิดใน Drive</a></div></div>` : ''}
-    ${j.billUrl ? `<div class="mt-2"><div class="form-label mb-1">🧾 ใบเสร็จ / บิล</div><div class="d-flex align-items-center gap-2 flex-wrap"><img src="${j.billUrl}" class="bill-thumb" onclick="viewImage('${j.billUrl}')" onerror="this.style.display='none'"><a href="${j.billViewUrl||j.billUrl}" target="_blank" class="btn-outline-custom btn-sm" style="font-size:.8rem;"><span class="material-icons" style="font-size:.9rem;">open_in_new</span> เปิดใน Drive</a></div></div>` : ''}
+    ${renderThumbRow(parseUrls(j.imageUrl), '📷 รูปประกอบ', j.viewUrl)}
+    ${renderThumbRow(parseUrls(j.billUrl), '🧾 ใบเสร็จ / บิล', j.billViewUrl)}
   `;
   const footer = document.getElementById('detail-footer');
   footer.innerHTML = '';
@@ -1438,25 +1444,23 @@ async function submitStatusChange() {
   const status  = document.getElementById('new-status').value;
   const note    = document.getElementById('status-note').value.trim();
   const cost    = document.getElementById('actual-cost').value.trim();
-  const billFile = document.getElementById('bill-image').files[0];
-
+  const billFiles = document.getElementById('bill-image').files;
   if (status === 'เสร็จสิ้น') {
     if (!cost || isNaN(cost)) { showToast('กรุณากรอกค่าใช้จ่ายจริง', 'error'); return; }
-    if (!billFile) { showToast('กรุณาแนบบิล/ใบเสร็จ', 'error'); return; }
+    if (!billFiles.length) { showToast('กรุณาแนบบิล/ใบเสร็จ', 'error'); return; }
   }
 
   showLoading(true);
   let billUrl = ''; let billViewUrl = '';
-  if (billFile) {
-    const compressed = await compressImage(billFile, 1600, 1600, 0.85);
-    const upRes = await gasCall('uploadImage', {
-      base64: compressed.b64, mimeType: compressed.mime,
-      filename: compressed.filename, folderType: 'bill',
-      jobId: jobId  // ส่ง jobId ตั้งชื่อไฟล์ เช่น JOB2506001_bill.jpg
-    });
-    if (upRes.status !== 'ok') { showLoading(false); showToast('อัปโหลดบิลไม่สำเร็จ: ' + (upRes.message || ''), 'error'); return; }
-    billUrl     = upRes.url     || '';
-    billViewUrl = upRes.viewUrl || '';
+  if (billFiles.length > 0) {
+    try {
+      const results = await uploadMultiImages(billFiles, 'bill', jobId);
+      const billUrls = results.map(r => r.url).filter(Boolean);
+      billUrl     = JSON.stringify(billUrls);
+      billViewUrl = results[0]?.viewUrl || '';
+    } catch(e) {
+      showLoading(false); showToast('อัปโหลดบิลไม่สำเร็จ: ' + e.message, 'error'); return;
+    }
   }
 
   const res = await gasCall('updateStatus', { jobId, status, note, actualCost: cost, billUrl, billViewUrl, adminUid: currentUser.lineUid });
@@ -1468,6 +1472,24 @@ async function submitStatusChange() {
   } else {
     showToast('เกิดข้อผิดพลาด: ' + (res.message || ''), 'error');
   }
+}
+
+/* Upload หลายรูปพร้อมกัน (parallel) — คืน array ของ {url, viewUrl} */
+async function uploadMultiImages(files, folderType, jobId = '') {
+  if (!files || files.length === 0) return [];
+  const tasks = Array.from(files).map(async (file, i) => {
+    const compressed = await compressImage(file);
+    const res = await gasCall('uploadImage', {
+      base64: compressed.b64,
+      mimeType: compressed.mime,
+      filename: compressed.filename,
+      folderType,
+      jobId,
+    });
+    if (res.status !== 'ok') throw new Error(res.message || 'upload failed');
+    return { url: res.url || '', viewUrl: res.viewUrl || '', fileId: res.fileId || '' };
+  });
+  return Promise.all(tasks); // parallel ทั้งหมดพร้อมกัน
 }
 
 /* ============================================================
@@ -1701,9 +1723,60 @@ function previewImage(input, previewId) {
   reader.readAsDataURL(file);
 }
 
+/* Multi-image preview — แสดงทุกรูปเป็น thumbnails */
+function previewMultiImage(input, previewId) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  const box = document.getElementById(previewId);
+  box.innerHTML = '';
+  files.forEach((file, idx) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:relative;display:inline-block;';
+      wrap.innerHTML = `<img src="${e.target.result}" style="height:80px;width:80px;object-fit:cover;border-radius:6px;border:2px solid var(--primary-xlight);">
+        <span style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.45);color:#fff;border-radius:50%;width:18px;height:18px;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="removePreviewImage(this,'${input.id}',${idx})">&times;</span>`;
+      box.appendChild(wrap);
+    };
+    reader.readAsDataURL(file);
+  });
+  const hint = document.createElement('div');
+  hint.style.cssText = 'font-size:.78rem;color:var(--gray-500);width:100%;text-align:center;margin-top:4px;';
+  hint.textContent = `${files.length} รูป — คลิกเพื่อเพิ่ม`;
+  box.appendChild(hint);
+}
+
+/* ลบรูปออกจาก preview (สร้าง FileList ใหม่) */
+function removePreviewImage(btn, inputId, removeIdx) {
+  btn.stopPropagation?.();
+  const input = document.getElementById(inputId);
+  const dt = new DataTransfer();
+  Array.from(input.files).forEach((f, i) => { if (i !== removeIdx) dt.items.add(f); });
+  input.files = dt.files;
+  previewMultiImage(input, input.id === 'f-image' ? 'repair-img-preview' : 'bill-preview');
+}
+
 function viewImage(url) {
   document.getElementById('modal-img-src').src = url;
   showModal('modalImage');
+}
+
+/* parse imageUrl / billUrl ที่อาจเป็น JSON array หรือ string เดิม */
+function parseUrls(raw) {
+  if (!raw) return [];
+  try { const a = JSON.parse(raw); return Array.isArray(a) ? a.filter(Boolean) : [raw]; }
+  catch { return [raw]; }
+}
+/* สร้าง thumbnail HTML สำหรับแสดงหลายรูป */
+function renderThumbRow(urls, label, viewUrl = '') {
+  if (!urls.length) return '';
+  const thumbs = urls.map(u =>
+    `<img src="${u}" class="bill-thumb" onclick="viewImage('${u}')" onerror="this.style.display='none'" style="height:64px;width:64px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid #ddd;">`
+  ).join('');
+  const driveLink = viewUrl
+    ? `<a href="${viewUrl}" target="_blank" class="btn-outline-custom btn-sm" style="font-size:.8rem;"><span class="material-icons" style="font-size:.9rem;">open_in_new</span> Drive</a>`
+    : '';
+  return `<div class="mt-2"><div class="form-label mb-1">${label}</div><div class="d-flex align-items-center gap-2 flex-wrap">${thumbs}${driveLink}</div></div>`;
 }
 
 /* Compress รูปก่อน upload — resize ให้ไม่เกิน maxW/maxH และ quality 0.8 */
@@ -2077,10 +2150,10 @@ async function printJobPDF(jobId) {
   .cost-amount { font-family:'Prompt',sans-serif; font-size:20px; font-weight:700; color:#7F0000; }
 
   /* images */
-  .img-row { display:flex; gap:8px; }
-  .img-box { border:1px solid #ddd; border-radius:5px; overflow:hidden; flex:1; max-width:48%; }
-  .img-box .img-lbl { padding:3px 8px; font-size:9px; font-weight:700; }
-  .img-box img { width:100%; max-height:75px; object-fit:contain; display:block; background:#f9f9f9; }
+  .img-row { display:flex; gap:8px; flex-wrap:wrap; }
+  .img-box { border:1px solid #ddd; border-radius:5px; overflow:hidden; width:100%; }
+  .img-box .img-lbl { padding:4px 10px; font-size:10px; font-weight:700; }
+  .img-box img { width:100%; max-height:220px; object-fit:contain; display:block; background:#f9f9f9; }
 
   /* sign */
   .sign-row { display:flex; gap:8px; margin-top:2px; }
@@ -2187,12 +2260,12 @@ async function printJobPDF(jobId) {
     </div>
 
     <!-- แถว 3: รูปภาพแนบ (ถ้ามี) -->
-    ${(j.imageUrl || j.billUrl) ? `
+    ${(parseUrls(j.imageUrl).length || parseUrls(j.billUrl).length) ? `
     <div>
       <div class="sec-title">📎 เอกสารแนบ</div>
       <div class="img-row">
-        ${j.imageUrl ? `<div class="img-box"><div class="img-lbl" style="background:#E3F2FD;color:#1565C0;">📷 รูปประกอบ</div><img src="${j.imageUrl}" onerror="this.parentElement.style.display='none'"></div>` : ''}
-        ${j.billUrl  ? `<div class="img-box"><div class="img-lbl" style="background:#FFEBEE;color:#B71C1C;">🧾 บิล/ใบเสร็จ</div><img src="${j.billUrl}" onerror="this.parentElement.style.display='none'"></div>` : ''}
+        ${parseUrls(j.imageUrl).map((u,i) => `<div class="img-box"><div class="img-lbl" style="background:#E3F2FD;color:#1565C0;">📷 รูปประกอบ${parseUrls(j.imageUrl).length>1?' ('+(i+1)+')':''}</div><img src="${u}" onerror="this.parentElement.style.display='none'"></div>`).join('')}
+        ${parseUrls(j.billUrl).map((u,i) => `<div class="img-box"><div class="img-lbl" style="background:#FFF8E1;color:#E65100;">🧾 บิล/ใบเสร็จ${parseUrls(j.billUrl).length>1?' ('+(i+1)+')':''}</div><img src="${u}" onerror="this.parentElement.style.display='none'"></div>`).join('')}
       </div>
     </div>` : ''}
 
@@ -2210,7 +2283,7 @@ async function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / หัวหน้างาน</div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>

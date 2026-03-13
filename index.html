@@ -104,7 +104,7 @@
           <span class="material-icons">rule_folder</span> รายการแจ้งซ่อม
           <span class="badge-count" id="badge-approval">0</span>
         </a>
-        <div class="sidebar-section-label" style="margin-top:.75rem;">รายงานผู้บริหาร</div>
+        <div class="sidebar-section-label" style="margin-top:.75rem;">รายงาน</div>
         <a class="sidebar-item" data-page="admin-report" onclick="navigate('admin-report')">
           <span class="material-icons">bar_chart</span> รายงานรายเดือน
         </a>
@@ -127,7 +127,7 @@
           <span class="material-icons">manage_search</span> ประวัติตามทะเบียน
         </a>
         <!-- รายงาน -->
-        <div class="sidebar-section-label" style="margin-top:.75rem;">รายงานหัวหน้างาน</div>
+        <div class="sidebar-section-label" style="margin-top:.75rem;">รายงาน</div>
         <a class="sidebar-item" data-page="admin-report" onclick="navigate('admin-report')">
           <span class="material-icons">bar_chart</span> รายงานรายเดือน
         </a>
@@ -723,10 +723,10 @@
               <input type="text" class="form-control" id="f-location" placeholder="ชื่ออู่ / สถานที่ (ไม่บังคับ)">
             </div>
             <div class="col-12">
-              <label class="form-label">แนบรูปภาพประกอบ</label>
-              <div class="img-preview-box" onclick="document.getElementById('f-image').click()">
-                <input type="file" id="f-image" accept="image/*" class="d-none" onchange="previewImage(this,'repair-img-preview')">
-                <div id="repair-img-preview">
+              <label class="form-label">แนบรูปภาพประกอบ <span style="font-size:.8rem;color:var(--gray-500);">(เลือกได้หลายรูป)</span></label>
+              <div class="img-preview-box" onclick="document.getElementById('f-image').click()" style="min-height:80px;">
+                <input type="file" id="f-image" accept="image/*" class="d-none" multiple onchange="previewMultiImage(this,'repair-img-preview')">
+                <div id="repair-img-preview" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;min-height:60px;">
                   <span class="material-icons" style="font-size:2rem;color:var(--gray-300);">photo_camera</span>
                   <div class="placeholder-text">คลิกเพื่อเลือกรูป (ไม่บังคับ)</div>
                 </div>
@@ -800,10 +800,10 @@
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label">แนบบิล / ใบเสร็จ <span class="req">*</span></label>
-            <div class="img-preview-box" onclick="document.getElementById('bill-image').click()">
-              <input type="file" id="bill-image" accept="image/*" class="d-none" onchange="previewImage(this,'bill-preview')">
-              <div id="bill-preview">
+            <label class="form-label">แนบบิล / ใบเสร็จ <span class="req">*</span> <span style="font-size:.8rem;color:var(--gray-500);">(เลือกได้หลายรูป)</span></label>
+            <div class="img-preview-box" onclick="document.getElementById('bill-image').click()" style="min-height:80px;">
+              <input type="file" id="bill-image" accept="image/*" class="d-none" multiple onchange="previewMultiImage(this,'bill-preview')">
+              <div id="bill-preview" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;min-height:60px;">
                 <span class="material-icons" style="font-size:2rem;color:var(--gray-300);">receipt</span>
                 <div class="placeholder-text">คลิกเพื่อแนบบิล</div>
               </div>
