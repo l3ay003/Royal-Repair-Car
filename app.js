@@ -1577,7 +1577,7 @@ async function saveVehicle() {
   const model = document.getElementById('v-model').value.trim();
   if (!plate) { showToast('กรุณากรอกเลขทะเบียน', 'error'); return; }
   showLoading(true);
-  const res = await gasCall('addVehicle', { plate, model });
+  const res = await gasCall('addVehicle', { plate, model, adminUid: currentUser.lineUid });
   showLoading(false);
   if (res.status==='ok') { showToast('เพิ่มทะเบียนสำเร็จ'); closeModal('modalAddVehicle'); loadData(); }
   else showToast('ผิดพลาด: '+(res.message||''), 'error');
@@ -1585,7 +1585,7 @@ async function saveVehicle() {
 async function deleteVehicle(plate) {
   if (!confirm(`ลบทะเบียน "${plate}"?`)) return;
   showLoading(true);
-  const res = await gasCall('deleteVehicle', { plate });
+  const res = await gasCall('deleteVehicle', { plate, adminUid: currentUser.lineUid });
   showLoading(false);
   if (res.status==='ok') { showToast('ลบสำเร็จ'); loadData(); }
   else showToast('ผิดพลาด', 'error');
@@ -2284,7 +2284,7 @@ async function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / ผู้บริหาร</div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>
