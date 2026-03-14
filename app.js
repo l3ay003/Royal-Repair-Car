@@ -1394,7 +1394,7 @@ function openStatusModal(jobId) {
   const roleOptions = {
     supervisor: (function() {
       // รอดำเนินการ / ส่งกลับแก้ไข → ส่งต่อผู้บริหารอย่างเดียว
-      if ((currentUser.role==='admin' ? j.status!=='ไม่อนุมัติ' : ['รอดำเนินการ','ส่งกลับแก้ไข'].includes(j.status))) {
+      if (['รอดำเนินการ','ส่งกลับแก้ไข'].includes(j.status)) {
         return [{ v:'รอการอนุมัติ', l:'📋 ส่งต่อผู้บริหาร (รอการอนุมัติ)' }];
       }
       // อนุมัติ → กำลังซ่อม หรือ เสร็จสิ้น
