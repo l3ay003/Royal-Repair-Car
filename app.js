@@ -234,7 +234,7 @@ async function _fetchFresh(silent = false) {
     const [jobsRes, vehiclesRes, usersRes] = await Promise.all([
       gasCall('getJobs',    { lineUid: currentUser.lineUid, isAdmin }),
       gasCall('getVehicles', {}),
-      isAdmin ? gasCall('getUsers', {}) : Promise.resolve({ users: [] })
+      isAdmin ? gasCall('getUsers', { adminUid: currentUser.lineUid }) : Promise.resolve({ users: [] })
     ]);
     if (jobsRes.status === 'error') { if (!silent) showToast('getJobs: ' + jobsRes.message, 'error'); return; }
     allJobs  = jobsRes.jobs      || [];
@@ -294,11 +294,19 @@ function renderStats() {
   }
 
 
-  // badge
+  // badge รอดำเนินการ
   const pending = allJobs.filter(j => j.status === 'รอดำเนินการ').length;
   const el = document.getElementById('badge-pending');
   el.textContent = pending;
   el.style.display = pending ? 'inline' : 'none';
+
+  // badge รออนุมัติ + refresh manager-jobs (สำหรับ admin ที่มีทั้ง 2 menu)
+  if (['admin','manager'].includes(currentUser?.role)) {
+    const approvalCount = allJobs.filter(j => j.status === 'รอการอนุมัติ').length;
+    const badge = document.getElementById('badge-approval');
+    if (badge) { badge.textContent = approvalCount; badge.style.display = approvalCount ? 'inline' : 'none'; }
+    if (document.getElementById('page-manager-jobs')?.classList.contains('active')) renderManagerJobs();
+  }
 }
 
 function renderRecentJobs() {
@@ -1363,7 +1371,6 @@ function openDetail(jobId) {
       <button class="btn-primary-custom btn-sm" style="background:var(--warning);color:#333;" onclick="closeModal('modalDetail');quickDecision('${j.jobId}','ส่งกลับแก้ไข')">
         <span class="material-icons" style="font-size:.9rem;">undo</span> ส่งกลับแก้ไข
       </button>`;
-  } else if (false) { // ส่งกลับแก้ไข → supervisor จัดการแทน user แล้ว
   } else {
     footer.innerHTML = pdfBtn;
   }
@@ -1749,7 +1756,6 @@ function previewMultiImage(input, previewId) {
 
 /* ลบรูปออกจาก preview (สร้าง FileList ใหม่) */
 function removePreviewImage(btn, inputId, removeIdx) {
-  btn.stopPropagation?.();
   const input = document.getElementById(inputId);
   const dt = new DataTransfer();
   Array.from(input.files).forEach((f, i) => { if (i !== removeIdx) dt.items.add(f); });
@@ -2284,7 +2290,7 @@ async function printJobPDF(jobId) {
         </div>
         <div class="sign-box">
           <div class="sign-line"></div>
-          <div class="sign-lbl">ผู้อนุมัติ / ผู้บริหาร</div>
+          <div class="sign-lbl">ช่างผู้รับผิดชอบ</div>
         </div>
       </div>
     </div>
